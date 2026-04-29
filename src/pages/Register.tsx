@@ -34,13 +34,17 @@ export default function Register() {
     if (signUpError) { setError(signUpError.message); return }
 
     if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: authData.user.id,
         username: data.username,
         full_name: data.full_name,
-      })
+      }, { onConflict: 'id' })
       if (profileError) {
-        setError('Error al crear el perfil. El nombre de usuario ya existe.')
+        if (profileError.code === '23505') {
+          setError('El nombre de usuario ya está en uso, elegí otro.')
+        } else {
+          setError('Error al crear el perfil: ' + profileError.message)
+        }
         return
       }
     }
