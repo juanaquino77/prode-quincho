@@ -1,41 +1,62 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  * {
-    box-sizing: border-box;
-  }
-  body {
-    @apply bg-union-navy text-white;
-    margin: 0;
-    font-family: 'Inter', system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  #root {
-    min-height: 100vh;
-  }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type=number] {
-    -moz-appearance: textfield;
-  }
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-union-blue/30 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-union-blue/50;
-  }
+@theme {
+  --color-union-blue: #00A8DE;
+  --color-union-blue-light: #33BCE8;
+  --color-union-blue-dark: #0090BE;
+  --color-union-navy: #001B38;
+  --color-union-navy-light: #002A54;
+  --color-union-navy-mid: #003366;
+  --color-union-white: #FDFEFF;
+
+  --background-image-gradient-navy: linear-gradient(135deg, #001B38 0%, #002A54 50%, #003366 100%);
+  --background-image-gradient-blue: linear-gradient(135deg, #00A8DE 0%, #0090BE 100%);
+
+  --font-sans: Inter, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #001B38;
+  color: white;
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, #00A8DE 30%, transparent);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, #00A8DE 50%, transparent);
 }
