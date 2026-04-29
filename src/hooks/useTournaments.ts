@@ -31,11 +31,13 @@ export function useUserTournaments(userId: string | undefined) {
         .select('tournament:tournaments(*, tournament_members(count))')
         .eq('user_id', userId!)
       if (error) throw error
-      return data
-        .map((row: { tournament: Tournament & { tournament_members: { count: number }[] } }) => ({
-          ...row.tournament,
-          member_count: row.tournament.tournament_members?.[0]?.count ?? 0,
-        }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any[])
+        .map((row) => {
+          const t = row.tournament as Tournament & { tournament_members: { count: number }[] }
+          if (!t) return null
+          return { ...t, member_count: t.tournament_members?.[0]?.count ?? 0 }
+        })
         .filter(Boolean) as Tournament[]
     },
   })

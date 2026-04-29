@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react'
@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { useMatches, useUpsertMatch, useDeleteMatch } from '../hooks/useMatches'
 import { formatShortDate, getStageName } from '../lib/utils'
-import type { Match } from '../types'
+import type { Match, MatchStage } from '../types'
 
 const matchSchema = z.object({
   match_number: z.coerce.number().min(1),
@@ -40,7 +40,7 @@ export default function Admin() {
   const filtered = matches?.filter((m) => m.stage === filterStage) ?? []
 
   function openNew() {
-    setEditMatch({ stage: filterStage, status: 'upcoming', group_name: null })
+    setEditMatch({ stage: filterStage as MatchStage, status: 'upcoming', group_name: null })
   }
 
   async function handleDelete(id: string) {
@@ -106,7 +106,7 @@ export default function Admin() {
           match={editMatch}
           onClose={() => setEditMatch(null)}
           onSave={async (data) => {
-            await upsert.mutateAsync({ ...editMatch, ...data })
+            await upsert.mutateAsync({ ...editMatch, ...data, stage: data.stage as MatchStage })
             setEditMatch(null)
           }}
           loading={upsert.isPending}
@@ -129,7 +129,7 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
 }) {
   const isEdit = !!match.id
   const { register, handleSubmit, formState: { errors } } = useForm<MatchFormData>({
-    resolver: zodResolver(matchSchema),
+    resolver: zodResolver(matchSchema) as Resolver<MatchFormData>,
     defaultValues: {
       match_number: match.match_number ?? 1,
       stage: match.stage ?? 'group',
