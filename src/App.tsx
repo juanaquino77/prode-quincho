@@ -9,6 +9,7 @@ import Predictions from './pages/Predictions'
 import Tournaments from './pages/Tournaments'
 import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/Admin'
+import Profile from './pages/Profile'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 } },
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/torneos" element={<Tournaments />} />
       <Route path="/tabla" element={<Leaderboard />} />
       {isAdmin && <Route path="/admin" element={<Admin />} />}
+      <Route path="/perfil" element={<Profile />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

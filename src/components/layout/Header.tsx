@@ -74,18 +74,18 @@ export function Header() {
           <div className="flex items-center gap-2">
             {user && (
               <>
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/40 flex items-center justify-center">
+                <Link to="/perfil" className="hidden sm:flex items-center gap-2 group">
+                  <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/40 flex items-center justify-center overflow-hidden group-hover:border-union-blue transition-colors">
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                     ) : (
                       <User size={14} className="text-union-blue" />
                     )}
                   </div>
-                  <span className="text-sm text-white/70 hidden lg:block">
+                  <span className="text-sm text-white/70 hidden lg:block group-hover:text-white transition-colors">
                     {profile?.username ?? user.email?.split('@')[0]}
                   </span>
-                </div>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="p-2 text-white/50 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10"
@@ -129,6 +129,12 @@ export function Header() {
               <Shield size={16} />Admin
             </Link>
           )}
+          <Link to="/perfil" onClick={() => setMenuOpen(false)} className={cn(
+            'flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+            location.pathname === '/perfil' ? 'bg-union-blue/20 text-union-blue' : 'text-white/70 hover:text-white hover:bg-white/5'
+          )}>
+            <User size={16} />Mi perfil
+          </Link>
         </div>
       )}
     </header>
