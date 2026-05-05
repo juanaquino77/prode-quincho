@@ -27,6 +27,7 @@ export function useUpsertPrediction() {
       tournament_id: string
       home_score_pred: number
       away_score_pred: number
+      penalty_pred?: 'home' | 'away' | null
     }) => {
       const { data, error } = await supabase
         .from('predictions')

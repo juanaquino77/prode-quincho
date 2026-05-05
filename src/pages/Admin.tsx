@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react'
@@ -25,6 +25,7 @@ const matchSchema = z.object({
   venue: z.string().optional(),
   home_score: z.coerce.number().nullable().optional(),
   away_score: z.coerce.number().nullable().optional(),
+  penalty_winner: z.enum(['home', 'away', '']).optional().nullable(),
   status: z.enum(['upcoming', 'live', 'finished']),
 })
 type MatchFormData = z.infer<typeof matchSchema>
@@ -106,7 +107,12 @@ export default function Admin() {
           match={editMatch}
           onClose={() => setEditMatch(null)}
           onSave={async (data) => {
-            await upsert.mutateAsync({ ...editMatch, ...data, stage: data.stage as MatchStage })
+            await upsert.mutateAsync({
+              ...editMatch,
+              ...data,
+              stage: data.stage as MatchStage,
+              penalty_winner: data.penalty_winner === '' ? null : (data.penalty_winner ?? null),
+            })
             setEditMatch(null)
           }}
           loading={upsert.isPending}
@@ -128,7 +134,7 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
   match: Partial<Match>; onClose: () => void; onSave: (d: MatchFormData) => Promise<void>; loading: boolean
 }) {
   const isEdit = !!match.id
-  const { register, handleSubmit, formState: { errors } } = useForm<MatchFormData>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<MatchFormData>({
     resolver: zodResolver(matchSchema) as Resolver<MatchFormData>,
     defaultValues: {
       match_number: match.match_number ?? 1,
@@ -142,9 +148,20 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
       venue: match.venue ?? '',
       home_score: match.home_score ?? undefined,
       away_score: match.away_score ?? undefined,
+      penalty_winner: match.penalty_winner ?? '',
       status: match.status ?? 'upcoming',
     },
   })
+
+  const watchedStage = useWatch({ control, name: 'stage' })
+  const watchedHome  = useWatch({ control, name: 'home_score' })
+  const watchedAway  = useWatch({ control, name: 'away_score' })
+
+  const KNOCKOUT = ['round_of_32','round_of_16','quarterfinal','semifinal','third_place','final']
+  const showPenaltyField =
+    KNOCKOUT.includes(watchedStage ?? '') &&
+    watchedHome != null && watchedAway != null &&
+    Number(watchedHome) === Number(watchedAway)
 
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Editar partido' : 'Nuevo partido'} className="max-w-lg">
@@ -183,6 +200,23 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
             </select>
           </div>
         </div>
+        {showPenaltyField && (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-union-blue-light">
+              Ganador en penales{' '}
+              <span className="text-yellow-400 text-xs">(empate en eliminatoria)</span>
+            </label>
+            <select
+              className="bg-union-navy-light border border-yellow-500/40 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              {...register('penalty_winner')}
+            >
+              <option value="">— Sin definir —</option>
+              <option value="home">{match.home_team || 'Local'}</option>
+              <option value="away">{match.away_team || 'Visitante'}</option>
+            </select>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
           <Button type="submit" loading={loading} className="flex-1">
             <Save size={15} className="mr-1" />{isEdit ? 'Guardar cambios' : 'Crear partido'}

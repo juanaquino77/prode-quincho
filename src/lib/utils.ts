@@ -2,7 +2,8 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { format, parseISO, isPast } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Match } from '../types'
+import type { Match, PenaltyWinner } from '../types'
+import { KNOCKOUT_STAGES } from '../types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -20,15 +21,41 @@ export function isMatchLocked(match: Match): boolean {
   return isPast(parseISO(match.match_date)) || match.status !== 'upcoming'
 }
 
-export function calcPoints(match: Match, homePred: number, awayPred: number): number {
+export function calcPoints(
+  match: Match,
+  homePred: number,
+  awayPred: number,
+  penaltyPred?: PenaltyWinner | null,
+): number {
   if (match.home_score === null || match.away_score === null) return 0
 
-  const exactScore = match.home_score === homePred && match.away_score === awayPred
-  if (exactScore) return 2
+  const exact = match.home_score === homePred && match.away_score === awayPred
+  const correctOutcome =
+    Math.sign(match.home_score - match.away_score) === Math.sign(homePred - awayPred)
 
-  const actualOutcome = Math.sign(match.home_score - match.away_score)
-  const predOutcome = Math.sign(homePred - awayPred)
-  return actualOutcome === predOutcome ? 1 : 0
+  if (!exact && !correctOutcome) return 0
+
+  let pts = exact ? 3 : 1
+
+  const isKnockout = KNOCKOUT_STAGES.includes(match.stage)
+  const actualDraw = match.home_score === match.away_score
+  const predDraw = homePred === awayPred
+
+  if (
+    isKnockout &&
+    actualDraw &&
+    predDraw &&
+    match.penalty_winner != null &&
+    penaltyPred != null
+  ) {
+    if (penaltyPred === match.penalty_winner) {
+      pts += 1
+    } else if (exact) {
+      pts -= 1 // deduction only on exact score, not on correct-outcome-only
+    }
+  }
+
+  return pts
 }
 
 export function getStageName(stage: string): string {

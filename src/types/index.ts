@@ -1,6 +1,11 @@
 export type MatchStage = 'group' | 'round_of_32' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'third_place' | 'final'
 export type MatchStatus = 'upcoming' | 'live' | 'finished'
 export type TournamentType = 'global' | 'friends'
+export type PenaltyWinner = 'home' | 'away'
+
+export const KNOCKOUT_STAGES: MatchStage[] = [
+  'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
+]
 
 export interface Profile {
   id: string
@@ -24,6 +29,7 @@ export interface Match {
   venue: string | null
   home_score: number | null
   away_score: number | null
+  penalty_winner: PenaltyWinner | null
   status: MatchStatus
   created_at: string
 }
@@ -59,6 +65,7 @@ export interface Prediction {
   tournament_id: string
   home_score_pred: number
   away_score_pred: number
+  penalty_pred: PenaltyWinner | null
   points_earned: number
   created_at: string
   updated_at: string
