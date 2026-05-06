@@ -31,6 +31,7 @@ export interface Match {
   away_score: number | null
   penalty_winner: PenaltyWinner | null
   status: MatchStatus
+  competition: string
   created_at: string
 }
 
@@ -44,6 +45,7 @@ export interface Tournament {
   prize_pool: number
   club_fee_percentage: number
   is_active: boolean
+  competition: string | null
   created_at: string
   member_count?: number
   user_joined?: boolean

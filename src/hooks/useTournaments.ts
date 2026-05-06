@@ -67,6 +67,7 @@ export function useCreateTournament() {
       entry_fee: number
       club_fee_percentage: number
       created_by: string
+      competition?: string | null
     }) => {
       const invite_code = generateInviteCode()
       const { data, error } = await supabase

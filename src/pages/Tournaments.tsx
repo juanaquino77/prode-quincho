@@ -8,13 +8,11 @@ import { CreateTournamentModal } from '../components/tournaments/CreateTournamen
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
 import { useUserTournaments, useGlobalTournament } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
-import { useIsAdmin } from '../hooks/useAuth'
 import type { Tournament } from '../types'
 
 export default function Tournaments() {
   const { user } = useAuthStore()
-  const isAdmin = useIsAdmin()
-  const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
+const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
   const { data: globalTournament } = useGlobalTournament()
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)

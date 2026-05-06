@@ -27,6 +27,7 @@ const matchSchema = z.object({
   away_score: z.coerce.number().nullable().optional(),
   penalty_winner: z.enum(['home', 'away', '']).optional().nullable(),
   status: z.enum(['upcoming', 'live', 'finished']),
+  competition: z.string().min(1),
 })
 type MatchFormData = z.infer<typeof matchSchema>
 
@@ -150,6 +151,7 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
       away_score: match.away_score ?? undefined,
       penalty_winner: match.penalty_winner ?? '',
       status: match.status ?? 'upcoming',
+      competition: match.competition ?? 'mundial_2026',
     },
   })
 
@@ -188,6 +190,13 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
         </div>
         <Input label="Fecha y hora" type="datetime-local" error={errors.match_date?.message} {...register('match_date')} />
         <Input label="Estadio" placeholder="MetLife Stadium, Nueva York" {...register('venue')} />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-union-blue-light">Competencia</label>
+          <select className="bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-union-blue" {...register('competition')}>
+            <option value="mundial_2026">🌎 Mundial 2026</option>
+            <option value="apertura_2026">🇦🇷 Apertura 2026</option>
+          </select>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <Input label="Goles Local" type="number" min="0" placeholder="—" {...register('home_score')} />
           <Input label="Goles Visitante" type="number" min="0" placeholder="—" {...register('away_score')} />

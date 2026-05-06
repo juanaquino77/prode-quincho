@@ -10,8 +10,14 @@ import { Card } from '../ui/Card'
 import { useCreateTournament } from '../../hooks/useTournaments'
 import type { Tournament } from '../../types'
 
+const COMPETITIONS = [
+  { value: 'apertura_2026', label: '🇦🇷 Apertura 2026' },
+  { value: 'mundial_2026', label: '🌎 Mundial 2026' },
+]
+
 const schema = z.object({
   name: z.string().min(3, 'Mínimo 3 caracteres').max(50),
+  competition: z.string().min(1),
   entry_fee: z.coerce.number().min(0, 'Debe ser mayor o igual a 0'),
   club_fee_percentage: z.coerce.number().min(0).max(100),
 })
@@ -26,7 +32,7 @@ interface Props {
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { entry_fee: 0, club_fee_percentage: 10 },
+    defaultValues: { entry_fee: 0, club_fee_percentage: 10, competition: 'apertura_2026' },
   })
   const createTournament = useCreateTournament()
   const [created, setCreated] = useState<Tournament | null>(null)
@@ -56,6 +62,17 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
       {!created ? (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Input label="Nombre del torneo" placeholder="Ej: Quincho de Juan" error={errors.name?.message} {...register('name')} />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-union-blue-light">Competencia</label>
+            <select
+              className="bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-union-blue"
+              {...register('competition')}
+            >
+              {COMPETITIONS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
           <Input label="Inscripción (ARS)" type="number" min="0" placeholder="0 = gratuito" error={errors.entry_fee?.message} {...register('entry_fee')} />
           <Input label="% para el club" type="number" min="0" max="100" placeholder="10" error={errors.club_fee_percentage?.message} {...register('club_fee_percentage')} />
           <p className="text-xs text-white/40">El resto del pozo va al ganador del torneo.</p>

@@ -2,15 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Match } from '../types'
 
-export function useMatches(stage?: string) {
+export function useMatches(competition?: string) {
   return useQuery({
-    queryKey: ['matches', stage],
+    queryKey: ['matches', competition],
     queryFn: async () => {
       let query = supabase
         .from('matches')
         .select('*')
         .order('match_date', { ascending: true })
-      if (stage) query = query.eq('stage', stage)
+      if (competition) query = query.eq('competition', competition)
       const { data, error } = await query
       if (error) throw error
       return data as Match[]

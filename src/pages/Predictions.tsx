@@ -1,65 +1,123 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
-import { useGlobalTournament } from '../hooks/useTournaments'
+import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { getStageName } from '../lib/utils'
-import type { Match } from '../types'
+import type { Match, MatchStage, Tournament } from '../types'
 
-const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
+const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
 const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
 
 export default function Predictions() {
   const { user } = useAuthStore()
-  const { data: matches, isLoading } = useMatches()
   const { data: globalTournament } = useGlobalTournament()
-  const { data: predictions } = usePredictions(user?.id, globalTournament?.id ?? '')
+  const { data: myTournaments } = useUserTournaments(user?.id)
+
+  // Build combined tournament list: global first, then user's friend tournaments
+  const allTournaments = useMemo<Tournament[]>(() => {
+    const list: Tournament[] = []
+    if (globalTournament) list.push(globalTournament)
+    const friends = (myTournaments ?? []).filter((t) => t.type === 'friends')
+    return [...list, ...friends]
+  }, [globalTournament, myTournaments])
+
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
+
+  // Resolve the active tournament object
+  const selectedTournament =
+    allTournaments.find((t) => t.id === selectedTournamentId) ?? allTournaments[0] ?? null
+
+  // Filter matches by the tournament's competition (null = all matches except apertura)
+  const competitionFilter = selectedTournament?.competition ?? undefined
+
+  const { data: matches, isLoading } = useMatches(competitionFilter)
+  const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
+
+  // Derive available stages from the loaded matches
+  const availableStages = useMemo(() => {
+    const stageSet = new Set((matches ?? []).map((m) => m.stage))
+    return STAGE_ORDER.filter((s) => stageSet.has(s))
+  }, [matches])
+
+  const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
-  const [activeStage, setActiveStage] = useState<string>('group')
+
+  // Use first available stage if current activeStage doesn't exist in this competition
+  const resolvedStage = availableStages.includes(activeStage)
+    ? activeStage
+    : availableStages[0] ?? 'group'
 
   const predMap = new Map(predictions?.map((p) => [p.match_id, p]))
 
-  const filteredMatches = (matches ?? []).filter((m) => {
-    if (activeStage === 'group') return m.stage === 'group' && m.group_name === activeGroup
-    return m.stage === activeStage
+  const filteredMatches = (matches ?? []).filter((m: Match) => {
+    if (resolvedStage === 'group') return m.stage === 'group' && m.group_name === activeGroup
+    return m.stage === resolvedStage
   })
 
-  if (!globalTournament) {
+  const showStageTabs = availableStages.length > 1
+  const showGroupTabs = resolvedStage === 'group'
+
+  if (!selectedTournament && allTournaments.length === 0) {
     return (
       <Layout>
-        <div className="text-center py-20 text-white/40">
-          Cargando torneo global...
-        </div>
+        <div className="text-center py-20 text-white/40">Cargando torneos...</div>
       </Layout>
     )
   }
 
   return (
     <Layout>
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-white">Mis Pronósticos</h1>
         <p className="text-white/50 text-sm mt-0.5">Ingresá tu resultado esperado antes de cada partido</p>
       </div>
 
-      {/* Stage tabs */}
-      <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
-        {STAGES.map((stage) => (
-          <button
-            key={stage}
-            onClick={() => { setActiveStage(stage); if (stage === 'group') setActiveGroup('A') }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              activeStage === stage ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'
-            }`}
-          >
-            {getStageName(stage)}
-          </button>
-        ))}
-      </div>
+      {/* Tournament selector */}
+      {allTournaments.length > 1 && (
+        <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+          {allTournaments.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setSelectedTournamentId(t.id)
+                setActiveStage('group')
+                setActiveGroup('A')
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                selectedTournament?.id === t.id
+                  ? 'bg-union-blue text-white'
+                  : 'bg-union-navy-light text-white/50 hover:text-white'
+              }`}
+            >
+              {t.type === 'global' ? '🌐 ' : '👥 '}
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Stage tabs (only when multiple stages available) */}
+      {showStageTabs && (
+        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+          {availableStages.map((stage) => (
+            <button
+              key={stage}
+              onClick={() => { setActiveStage(stage); if (stage === 'group') setActiveGroup('A') }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                resolvedStage === stage ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'
+              }`}
+            >
+              {getStageName(stage)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Group tabs (only in group stage) */}
-      {activeStage === 'group' && (
+      {showGroupTabs && (
         <div className="flex gap-1 mb-4 flex-wrap">
           {GROUPS.map((g) => (
             <button
@@ -86,7 +144,7 @@ export default function Predictions() {
               key={match.id}
               match={match}
               prediction={predMap.get(match.id)}
-              tournamentId={globalTournament.id}
+              tournamentId={selectedTournament!.id}
               userId={user!.id}
             />
           ))}
