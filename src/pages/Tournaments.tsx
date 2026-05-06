@@ -8,10 +8,12 @@ import { CreateTournamentModal } from '../components/tournaments/CreateTournamen
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
 import { useUserTournaments, useGlobalTournament } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
+import { useIsAdmin } from '../hooks/useAuth'
 import type { Tournament } from '../types'
 
 export default function Tournaments() {
   const { user } = useAuthStore()
+  const isAdmin = useIsAdmin()
   const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
   const { data: globalTournament } = useGlobalTournament()
   const [createOpen, setCreateOpen] = useState(false)
@@ -26,10 +28,10 @@ export default function Tournaments() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => setJoinOpen(true)}>
-            <LogIn size={15} className="mr-1" /> Unirse
+            <LogIn size={15} className="mr-1" /> Unirse con código
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus size={15} className="mr-1" /> Crear
+            <Plus size={15} className="mr-1" /> Crear torneo
           </Button>
         </div>
       </div>
@@ -59,7 +61,7 @@ export default function Tournaments() {
             <p className="text-white/50 text-sm">Aún no estás en ningún torneo de amigos</p>
             <div className="flex gap-2 justify-center mt-4">
               <Button size="sm" onClick={() => setCreateOpen(true)}><Plus size={14} className="mr-1" />Crear torneo</Button>
-              <Button size="sm" variant="secondary" onClick={() => setJoinOpen(true)}><LogIn size={14} className="mr-1" />Unirse</Button>
+              <Button size="sm" variant="secondary" onClick={() => setJoinOpen(true)}><LogIn size={14} className="mr-1" />Unirse con código</Button>
             </div>
           </Card>
         )}
