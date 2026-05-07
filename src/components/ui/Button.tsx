@@ -13,7 +13,7 @@ export function Button({ variant = 'primary', size = 'md', loading, className, c
     <button
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-union-navy disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-union-navy disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer',
         {
           'bg-union-blue hover:bg-union-blue-dark text-white focus:ring-union-blue': variant === 'primary',
           'bg-union-navy-light hover:bg-union-navy-mid text-white border border-union-blue/30 focus:ring-union-blue': variant === 'secondary',

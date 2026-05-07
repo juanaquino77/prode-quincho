@@ -121,7 +121,12 @@ export function useDeleteTournament() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (tournamentId: string) => {
-      const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId)
+      // RLS doesn't have a DELETE policy, so we soft-delete via is_active=false
+      // Creator can do this because the UPDATE policy allows it
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ is_active: false })
+        .eq('id', tournamentId)
       if (error) throw error
     },
     onSuccess: () => {
