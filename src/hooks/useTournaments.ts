@@ -117,6 +117,21 @@ export function useJoinTournament() {
   })
 }
 
+export function useDeleteTournament() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tournamentId: string) => {
+      const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] })
+      qc.invalidateQueries({ queryKey: ['user-tournaments'] })
+      qc.invalidateQueries({ queryKey: ['global-tournament'] })
+    },
+  })
+}
+
 export function useLeaderboard(tournamentId: string | undefined) {
   return useQuery({
     queryKey: ['leaderboard', tournamentId],

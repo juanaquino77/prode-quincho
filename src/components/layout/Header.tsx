@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Trophy, Menu, X, LogOut, User, Shield, BarChart3, Calendar, Users } from 'lucide-react'
+import { Trophy, Menu, X, LogOut, User, Shield, BarChart3, Calendar, Users, GitBranch } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/authStore'
 import { useIsAdmin } from '../../hooks/useAuth'
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'Inicio', icon: BarChart3 },
   { to: '/predicciones', label: 'Predicciones', icon: Calendar },
   { to: '/torneos', label: 'Torneos', icon: Trophy },
+  { to: '/bracket', label: 'Bracket', icon: GitBranch },
   { to: '/tabla', label: 'Tabla', icon: Users },
 ]
 

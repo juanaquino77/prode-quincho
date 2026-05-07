@@ -10,6 +10,7 @@ import Tournaments from './pages/Tournaments'
 import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
+import Bracket from './pages/Bracket'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 } },
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/predicciones" element={<Predictions />} />
       <Route path="/torneos" element={<Tournaments />} />
       <Route path="/tabla" element={<Leaderboard />} />
+      <Route path="/bracket" element={<Bracket />} />
       {isAdmin && <Route path="/admin" element={<Admin />} />}
       <Route path="/perfil" element={<Profile />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

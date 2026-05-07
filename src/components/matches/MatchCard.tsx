@@ -8,6 +8,13 @@ import type { Match, Prediction, PenaltyWinner } from '../../types'
 import { KNOCKOUT_STAGES } from '../../types'
 import { useUpsertPrediction } from '../../hooks/usePredictions'
 
+function TeamBadge({ flag }: { flag: string | null }) {
+  if (flag && flag.startsWith('http')) {
+    return <img src={flag} alt="" className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+  }
+  return <span className="text-2xl">{flag ?? '⚽'}</span>
+}
+
 interface MatchCardProps {
   match: Match
   prediction?: Prediction
@@ -106,7 +113,7 @@ export function MatchCard({ match, prediction, tournamentId, userId }: MatchCard
       <div className="flex items-center gap-3">
         {/* Home */}
         <div className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-2xl">{match.home_flag ?? '⚽'}</span>
+          <TeamBadge flag={match.home_flag} />
           <span className="text-sm font-semibold text-white text-center leading-tight">
             {match.home_team}
           </span>
@@ -221,7 +228,7 @@ export function MatchCard({ match, prediction, tournamentId, userId }: MatchCard
 
         {/* Away */}
         <div className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-2xl">{match.away_flag ?? '⚽'}</span>
+          <TeamBadge flag={match.away_flag} />
           <span className="text-sm font-semibold text-white text-center leading-tight">
             {match.away_team}
           </span>
