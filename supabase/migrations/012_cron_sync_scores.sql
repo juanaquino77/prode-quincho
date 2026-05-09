@@ -18,7 +18,7 @@ select cron.schedule(
   'sync-live-scores',
   '* * * * *',
   $$
-  select extensions.http_post(
+  select net.http_post(
     url     := 'https://ueecbkteyzgjilaindwj.supabase.co/functions/v1/sync-scores',
     headers := jsonb_build_object(
       'Content-Type',  'application/json',
