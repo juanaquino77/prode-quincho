@@ -21,8 +21,8 @@ select cron.schedule(
   select extensions.http_post(
     url     := 'https://ueecbkteyzgjilaindwj.supabase.co/functions/v1/sync-scores',
     headers := jsonb_build_object(
-      'Content-Type',   'application/json',
-      'Authorization',  'Bearer YOUR_SERVICE_ROLE_KEY'
+      'Content-Type',  'application/json',
+      'x-sync-secret', 'prode-sync-2026'
     ),
     body    := '{}'::jsonb,
     timeout_milliseconds := 10000

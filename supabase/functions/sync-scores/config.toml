@@ -1,0 +1,2 @@
+[functions.sync-scores]
+verify_jwt = false
