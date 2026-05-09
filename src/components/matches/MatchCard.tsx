@@ -147,9 +147,9 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   const showPenaltyBadge  = !inputsDisabled && penaltyRequired && committedPenalty !== null
 
   return (
-    <div ref={cardRef}>
+    <div ref={cardRef} className="h-full">
     <Card className={cn(
-      'hover:border-union-blue/40 transition-colors',
+      'hover:border-union-blue/40 transition-colors h-full flex flex-col',
       highlighted && 'ring-2 ring-union-blue shadow-[0_0_24px_rgba(0,168,222,0.25)]'
     )}>
       {/* Header */}
@@ -306,7 +306,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
       )}
 
       {/* Footer */}
-      <div className="mt-3 pt-3 border-t border-union-blue/10 space-y-1.5">
+      <div className="mt-auto pt-3 border-t border-union-blue/10 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             {pointsBadge ? (
