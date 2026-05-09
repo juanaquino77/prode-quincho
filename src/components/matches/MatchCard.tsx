@@ -178,6 +178,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
           {/* Actual result */}
           {match.status === 'finished' ? (
             <div className="flex flex-col items-center gap-0.5">
+              <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Resultado</span>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-white">{match.home_score}</span>
                 <span className="text-white/30">-</span>
@@ -206,6 +207,9 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
+              {match.status === 'finished' && prediction && (
+                <span className="text-[10px] font-semibold text-union-blue/60 uppercase tracking-wider">Tu pronóstico</span>
+              )}
               {/* Score inputs — always visible, disabled when not editing */}
               <div className="flex items-center gap-1.5">
                 <input
