@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
 import { useGlobalTournament, useLeaderboard } from '../hooks/useTournaments'
 import { formatShortDate } from '../lib/utils'
+import { ClubFlag } from '../components/ui/ClubFlag'
 
 export default function Dashboard() {
   const { user, profile } = useAuthStore()
@@ -56,13 +57,13 @@ export default function Dashboard() {
             ) : (
               (live.length > 0 ? live : upcoming).map((match) => (
                 <Card key={match.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{match.home_flag ?? '🏳️'}</span>
+                  <div className="flex items-center gap-2">
+                    <ClubFlag teamName={match.home_team} size={28} />
                     <div>
                       <p className="text-sm font-medium text-white">{match.home_team} vs {match.away_team}</p>
                       <p className="text-xs text-white/40">{formatShortDate(match.match_date)}</p>
                     </div>
-                    <span className="text-xl">{match.away_flag ?? '🏳️'}</span>
+                    <ClubFlag teamName={match.away_team} size={28} />
                   </div>
                   {match.status === 'live' ? (
                     <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">En vivo</span>

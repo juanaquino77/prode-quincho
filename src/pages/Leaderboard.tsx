@@ -1,18 +1,21 @@
-import { useState } from 'react'
 import { Layout } from '../components/layout/Layout'
 import { LeaderboardTable } from '../components/leaderboard/LeaderboardTable'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
+import { useTournamentStore } from '../store/tournamentStore'
 import type { Tournament } from '../types'
 
 export default function Leaderboard() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { data: globalTournament } = useGlobalTournament()
   const { data: myTournaments } = useUserTournaments(user?.id)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { selectedTournamentId, setSelectedTournamentId } = useTournamentStore()
 
-  const tournamentId = selectedId ?? globalTournament?.id
+  const tournamentId = selectedTournamentId ?? globalTournament?.id
   const { data: leaderboard, isLoading } = useLeaderboard(tournamentId)
+
+  const selectedTournament = [...(globalTournament ? [globalTournament] : []), ...(myTournaments ?? [])]
+    .find((t) => t.id === tournamentId)
 
   const allTournaments: Tournament[] = [
     ...(globalTournament ? [globalTournament] : []),
@@ -24,7 +27,7 @@ export default function Leaderboard() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Tabla de Posiciones</h1>
         <p className="text-white/50 text-sm mt-0.5">
-          1 punto por resultado · 2 puntos por marcador exacto
+          1 pt resultado correcto · 3 pts marcador exacto · +1 pt penales acertados
         </p>
       </div>
 
@@ -34,7 +37,7 @@ export default function Leaderboard() {
           {allTournaments.map((t) => (
             <button
               key={t.id}
-              onClick={() => setSelectedId(t.id)}
+              onClick={() => setSelectedTournamentId(t.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 tournamentId === t.id
                   ? 'bg-union-blue text-white'
@@ -50,7 +53,13 @@ export default function Leaderboard() {
       {isLoading ? (
         <div className="text-center py-12 text-white/40">Cargando tabla...</div>
       ) : (
-        <LeaderboardTable entries={leaderboard ?? []} currentUserId={user?.id} />
+        <LeaderboardTable
+          entries={leaderboard ?? []}
+          currentUserId={user?.id}
+          isAdmin={profile?.is_admin ?? false}
+          tournamentId={tournamentId}
+          competition={selectedTournament?.competition}
+        />
       )}
     </Layout>
   )

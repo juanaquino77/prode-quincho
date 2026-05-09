@@ -49,6 +49,20 @@ export interface Tournament {
   created_at: string
   member_count?: number
   user_joined?: boolean
+  user_paid?: boolean
+}
+
+export interface Payment {
+  id: string
+  user_id: string
+  tournament_id: string
+  mp_preference_id: string | null
+  mp_payment_id: string | null
+  amount: number
+  currency: string
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  created_at: string
+  updated_at: string
 }
 
 export interface TournamentMember {

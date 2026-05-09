@@ -17,8 +17,19 @@ export function formatShortDate(dateStr: string) {
   return format(parseISO(dateStr), 'd MMM HH:mm', { locale: es })
 }
 
+/** Returns the deadline string for modifying a prediction, e.g. "hasta el 12 may · 13:00 hs" */
+export function formatLockDeadline(matchDateStr: string): string {
+  const kickOff = parseISO(matchDateStr)
+  const lockAt = new Date(kickOff.getTime() - 2 * 60 * 60 * 1000)
+  return format(lockAt, "d MMM · HH:mm 'hs'", { locale: es })
+}
+
 export function isMatchLocked(match: Match): boolean {
-  return isPast(parseISO(match.match_date)) || match.status !== 'upcoming'
+  if (match.status !== 'upcoming') return true
+  // Lock predictions 2 hours before kick-off
+  const kickOff = parseISO(match.match_date)
+  const lockAt = new Date(kickOff.getTime() - 2 * 60 * 60 * 1000)
+  return isPast(lockAt)
 }
 
 export function calcPoints(

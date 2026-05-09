@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -10,9 +10,50 @@ import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { useMatches, useUpsertMatch, useDeleteMatch } from '../hooks/useMatches'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabase'
 import { formatShortDate, getStageName } from '../lib/utils'
+import { cn } from '../lib/utils'
 import type { Match, MatchStage } from '../types'
 
+// ─── Types ────────────────────────────────────────────────────
+interface AdminUser {
+  user_id: string
+  email: string
+  username: string | null
+  full_name: string | null
+  avatar_url: string | null
+  user_is_admin: boolean
+  created_at: string
+}
+
+// ─── Hooks ────────────────────────────────────────────────────
+function useAdminUsers() {
+  return useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_users')
+      if (error) throw error
+      // RETURNS json → data is already the parsed array
+      const users = Array.isArray(data) ? data : (data ?? [])
+      return users as AdminUser[]
+    },
+    retry: false,
+  })
+}
+
+function useAdminDeleteUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc('admin_delete_user', { p_user_id: userId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+}
+
+// ─── Match form schema ────────────────────────────────────────
 const matchSchema = z.object({
   match_number: z.coerce.number().min(1),
   stage: z.string().min(1),
@@ -31,7 +72,49 @@ const matchSchema = z.object({
 })
 type MatchFormData = z.infer<typeof matchSchema>
 
+// ─── Admin page ───────────────────────────────────────────────
+type Tab = 'matches' | 'users'
+
 export default function Admin() {
+  const [activeTab, setActiveTab] = useState<Tab>('matches')
+
+  return (
+    <Layout>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
+        <p className="text-white/50 text-sm mt-0.5">Gestión de partidos y usuarios</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0">
+        {([
+          { id: 'matches', label: 'Partidos', icon: Calendar },
+          { id: 'users',   label: 'Usuarios', icon: Users },
+        ] as { id: Tab; label: string; icon: typeof Calendar }[]).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors',
+              activeTab === id
+                ? 'border-union-blue text-union-blue'
+                : 'border-transparent text-white/50 hover:text-white'
+            )}
+          >
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'matches' && <MatchesTab />}
+      {activeTab === 'users'   && <UsersTab />}
+    </Layout>
+  )
+}
+
+// ─── Matches tab ──────────────────────────────────────────────
+function MatchesTab() {
   const { data: matches, isLoading } = useMatches()
   const upsert = useUpsertMatch()
   const deleteMatch = useDeleteMatch()
@@ -53,23 +136,17 @@ export default function Admin() {
   const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
 
   return (
-    <Layout>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
-          <p className="text-white/50 text-sm mt-0.5">Gestión de partidos del Mundial 2026</p>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {STAGES.map((s) => (
+            <button key={s} onClick={() => setFilterStage(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filterStage === s ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'}`}>
+              {getStageName(s)}
+            </button>
+          ))}
         </div>
-        <Button onClick={openNew}><Plus size={16} className="mr-1" />Nuevo partido</Button>
-      </div>
-
-      {/* Stage filter */}
-      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-        {STAGES.map((s) => (
-          <button key={s} onClick={() => setFilterStage(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filterStage === s ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'}`}>
-            {getStageName(s)}
-          </button>
-        ))}
+        <Button onClick={openNew} className="ml-3 shrink-0"><Plus size={16} className="mr-1" />Nuevo</Button>
       </div>
 
       {isLoading ? (
@@ -127,10 +204,108 @@ export default function Admin() {
           <Button variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1">Cancelar</Button>
         </div>
       </Modal>
-    </Layout>
+    </>
   )
 }
 
+// ─── Users tab ────────────────────────────────────────────────
+function UsersTab() {
+  const { data: users, isLoading, error } = useAdminUsers()
+  const deleteUser = useAdminDeleteUser()
+  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null)
+
+  async function handleDelete() {
+    if (!confirmDelete) return
+    await deleteUser.mutateAsync(confirmDelete.user_id)
+    setConfirmDelete(null)
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-white/40 text-sm">{users?.length ?? 0} usuarios registrados</p>
+      </div>
+
+      {isLoading ? (
+        <p className="text-white/40">Cargando usuarios...</p>
+      ) : error ? (
+        <Card className="py-6 text-center">
+          <p className="text-red-400 text-sm font-semibold mb-1">Error al cargar usuarios</p>
+          <p className="text-white/40 text-xs font-mono">{(error as Error).message}</p>
+          <p className="text-white/30 text-xs mt-2">¿Ejecutaste la migración 008 en Supabase?</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {(users ?? []).map((u) => (
+            <Card key={u.user_id} className="flex items-center gap-3">
+              {/* Avatar */}
+              <div className="w-9 h-9 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+                {u.avatar_url ? (
+                  <img src={u.avatar_url} alt="" className="w-9 h-9 object-cover rounded-full" />
+                ) : (
+                  <span className="text-sm font-bold text-union-blue">
+                    {(u.username ?? u.email ?? '?')[0].toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-white truncate">
+                    {u.username ?? '—'}
+                  </span>
+                  {u.user_is_admin && (
+                    <Badge variant="blue">
+                      <ShieldAlert size={10} className="mr-1" />Admin
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-white/40 truncate">{u.email}</p>
+              </div>
+
+              {/* Date */}
+              <span className="text-xs text-white/30 hidden sm:block shrink-0">
+                {new Date(u.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+
+              {/* Delete */}
+              {!u.user_is_admin && (
+                <button
+                  onClick={() => setConfirmDelete(u)}
+                  className="p-1.5 text-white/30 hover:text-red-400 transition-colors shrink-0"
+                  title="Eliminar usuario"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Eliminar usuario">
+        <p className="text-white/70 mb-1">
+          ¿Seguro que querés eliminar a{' '}
+          <span className="text-white font-semibold">{confirmDelete?.username ?? confirmDelete?.email}</span>?
+        </p>
+        <p className="text-white/40 text-xs mb-4">
+          Se eliminarán su cuenta, perfil y todos sus pronósticos. Esta acción no se puede deshacer.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="danger" onClick={handleDelete} loading={deleteUser.isPending} className="flex-1">
+            Eliminar usuario
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1">
+            Cancelar
+          </Button>
+        </div>
+      </Modal>
+    </>
+  )
+}
+
+// ─── Match form modal ─────────────────────────────────────────
 function MatchFormModal({ match, onClose, onSave, loading }: {
   match: Partial<Match>; onClose: () => void; onSave: (d: MatchFormData) => Promise<void>; loading: boolean
 }) {
@@ -225,7 +400,6 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
             </select>
           </div>
         )}
-
         <div className="flex gap-2 pt-2">
           <Button type="submit" loading={loading} className="flex-1">
             <Save size={15} className="mr-1" />{isEdit ? 'Guardar cambios' : 'Crear partido'}

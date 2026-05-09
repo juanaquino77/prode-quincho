@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Tournament, LeaderboardEntry } from '../types'
+import type { Tournament, LeaderboardEntry, Payment } from '../types'
 import { generateInviteCode } from '../lib/utils'
 
 export function useTournaments() {
@@ -28,7 +28,7 @@ export function useUserTournaments(userId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournament_members')
-        .select('tournament:tournaments(*, tournament_members(count))')
+        .select('paid, tournament:tournaments(*, tournament_members(count))')
         .eq('user_id', userId!)
       if (error) throw error
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,7 +36,11 @@ export function useUserTournaments(userId: string | undefined) {
         .map((row) => {
           const t = row.tournament as Tournament & { tournament_members: { count: number }[] }
           if (!t) return null
-          return { ...t, member_count: t.tournament_members?.[0]?.count ?? 0 }
+          return {
+            ...t,
+            member_count: t.tournament_members?.[0]?.count ?? 0,
+            user_paid: row.paid as boolean,
+          }
         })
         .filter(Boolean) as Tournament[]
     },
@@ -121,11 +125,9 @@ export function useDeleteTournament() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (tournamentId: string) => {
-      // RLS doesn't have a DELETE policy, so we soft-delete via is_active=false
-      // Creator can do this because the UPDATE policy allows it
       const { error } = await supabase
         .from('tournaments')
-        .update({ is_active: false })
+        .delete()
         .eq('id', tournamentId)
       if (error) throw error
     },
@@ -147,6 +149,41 @@ export function useLeaderboard(tournamentId: string | undefined) {
       })
       if (error) throw error
       return data as LeaderboardEntry[]
+    },
+  })
+}
+
+export function useUserPayment(userId: string | undefined, tournamentId: string | undefined) {
+  return useQuery({
+    queryKey: ['payment', userId, tournamentId],
+    enabled: !!userId && !!tournamentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('user_id', userId!)
+        .eq('tournament_id', tournamentId!)
+        .maybeSingle()
+      if (error) throw error
+      return data as Payment | null
+    },
+  })
+}
+
+export function useCreatePayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tournamentId: string) => {
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { tournament_id: tournamentId },
+      })
+      if (error) throw error
+      return data as { init_point: string; sandbox_init_point: string }
+    },
+    onSuccess: (_, tournamentId) => {
+      qc.invalidateQueries({ queryKey: ['payment'] })
+      qc.invalidateQueries({ queryKey: ['user-tournaments'] })
+      qc.invalidateQueries({ queryKey: ['tournaments', tournamentId] })
     },
   })
 }

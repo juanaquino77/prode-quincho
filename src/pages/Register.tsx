@@ -27,27 +27,19 @@ export default function Register() {
 
   async function onSubmit(data: FormData) {
     setError('')
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+    // username + full_name van en options.data → el trigger handle_new_user los usa
+    // Esto evita cualquier error de RLS porque el trigger corre como SECURITY DEFINER
+    const { error: signUpError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          username: data.username,
+          full_name: data.full_name,
+        },
+      },
     })
     if (signUpError) { setError(signUpError.message); return }
-
-    if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: authData.user.id,
-        username: data.username,
-        full_name: data.full_name,
-      }, { onConflict: 'id' })
-      if (profileError) {
-        if (profileError.code === '23505') {
-          setError('El nombre de usuario ya está en uso, elegí otro.')
-        } else {
-          setError('Error al crear el perfil: ' + profileError.message)
-        }
-        return
-      }
-    }
     navigate('/dashboard')
   }
 

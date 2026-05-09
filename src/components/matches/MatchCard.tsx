@@ -1,18 +1,18 @@
-import { useState } from 'react'
-import { Lock, CheckCircle2, Clock } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Lock, CheckCircle2, Clock, Pencil, X } from 'lucide-react'
 import { Card } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { formatShortDate, isMatchLocked, calcPoints, cn } from '../../lib/utils'
+import { formatShortDate, formatLockDeadline, isMatchLocked, calcPoints, cn } from '../../lib/utils'
+import { ClubFlag } from '../ui/ClubFlag'
 import type { Match, Prediction, PenaltyWinner } from '../../types'
 import { KNOCKOUT_STAGES } from '../../types'
 import { useUpsertPrediction } from '../../hooks/usePredictions'
 
-function TeamBadge({ flag }: { flag: string | null }) {
-  if (flag && flag.startsWith('http')) {
-    return <img src={flag} alt="" className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-  }
-  return <span className="text-2xl">{flag ?? '⚽'}</span>
+function TeamBadge({ flag, teamName }: { flag: string | null; teamName: string }) {
+  const isNationalTeamEmoji = flag && !flag.startsWith('http')
+  if (isNationalTeamEmoji) return <span className="text-2xl">{flag}</span>
+  return <ClubFlag teamName={teamName} size={40} />
 }
 
 interface MatchCardProps {
@@ -20,83 +20,139 @@ interface MatchCardProps {
   prediction?: Prediction
   tournamentId: string
   userId: string
+  phaseLocked?: boolean
+  phaseUnlockAt?: Date
+  highlighted?: boolean
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId }: MatchCardProps) {
+// ── Countdown ──────────────────────────────────────────────────
+function Countdown({ unlockAt }: { unlockAt: Date }) {
+  const [remaining, setRemaining] = useState(unlockAt.getTime() - Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(unlockAt.getTime() - Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [unlockAt])
+
+  if (remaining <= 0) return <span className="text-[10px] text-white/30">Desbloqueando...</span>
+
+  const totalSec = Math.floor(remaining / 1000)
+  const d = Math.floor(totalSec / 86400)
+  const h = Math.floor((totalSec % 86400) / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[10px] text-white/30">Disponible en</span>
+      <span className="text-base font-mono font-bold text-white/60 tabular-nums">
+        {d > 0 ? `${d}d ` : ''}{String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted }: MatchCardProps) {
   const locked = isMatchLocked(match)
   const upsert = useUpsertPrediction()
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (highlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [highlighted])
 
   const [home, setHome] = useState<string>(prediction?.home_score_pred?.toString() ?? '')
   const [away, setAway] = useState<string>(prediction?.away_score_pred?.toString() ?? '')
-  const [penaltyPred, setPenaltyPred] = useState<PenaltyWinner | null>(
-    prediction?.penalty_pred ?? null
-  )
+  const [penaltyPred, setPenaltyPred] = useState<PenaltyWinner | null>(prediction?.penalty_pred ?? null)
+  const [committedPenalty, setCommittedPenalty] = useState<PenaltyWinner | null>(prediction?.penalty_pred ?? null)
   const [saved, setSaved] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
-  // Derived flags
+  // Sync inputs when prediction arrives from React Query (async load)
+  useEffect(() => {
+    if (prediction) {
+      setHome(prediction.home_score_pred?.toString() ?? '')
+      setAway(prediction.away_score_pred?.toString() ?? '')
+      setPenaltyPred(prediction.penalty_pred ?? null)
+      setCommittedPenalty(prediction.penalty_pred ?? null)
+      setIsEditing(false)
+    }
+  }, [prediction?.home_score_pred, prediction?.away_score_pred, prediction?.penalty_pred])
+
   const isKnockout = KNOCKOUT_STAGES.includes(match.stage)
-  const h = parseInt(home)
-  const a = parseInt(away)
-  const inputsAreDraw = !isNaN(h) && !isNaN(a) && h === a
+  const hVal = parseInt(home)
+  const aVal = parseInt(away)
+  const inputsAreDraw = !isNaN(hVal) && !isNaN(aVal) && hVal === aVal
   const penaltyRequired = isKnockout && inputsAreDraw
 
-  // Points (only when finished and prediction exists)
   const points =
     match.status === 'finished' && prediction
       ? calcPoints(match, prediction.home_score_pred, prediction.away_score_pred, prediction.penalty_pred)
       : null
 
+  // Inputs are disabled when: time-locked, phase-locked, or prediction exists but not editing
+  const inputsDisabled = locked || phaseLocked || (!!prediction && !isEditing)
+
   function handleHomeChange(val: string) {
     setHome(val)
-    // Reset penalty if scores are no longer equal
-    if (parseInt(val) !== parseInt(away)) setPenaltyPred(null)
+    if (parseInt(val) !== parseInt(away)) { setPenaltyPred(null); setCommittedPenalty(null) }
   }
 
   function handleAwayChange(val: string) {
     setAway(val)
-    if (parseInt(home) !== parseInt(val)) setPenaltyPred(null)
+    if (parseInt(home) !== parseInt(val)) { setPenaltyPred(null); setCommittedPenalty(null) }
+  }
+
+  function handleCancelEdit() {
+    setHome(prediction?.home_score_pred?.toString() ?? '')
+    setAway(prediction?.away_score_pred?.toString() ?? '')
+    setPenaltyPred(prediction?.penalty_pred ?? null)
+    setCommittedPenalty(prediction?.penalty_pred ?? null)
+    setIsEditing(false)
   }
 
   async function handleSave() {
-    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) return
+    if (isNaN(hVal) || isNaN(aVal) || hVal < 0 || aVal < 0) return
     if (penaltyRequired && penaltyPred === null) return
     await upsert.mutateAsync({
       user_id: userId,
       match_id: match.id,
       tournament_id: tournamentId,
-      home_score_pred: h,
-      away_score_pred: a,
+      home_score_pred: hVal,
+      away_score_pred: aVal,
       penalty_pred: penaltyRequired ? penaltyPred : null,
     })
+    if (penaltyRequired && penaltyPred) setCommittedPenalty(penaltyPred)
     setSaved(true)
+    setIsEditing(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
   const statusBadge =
-    match.status === 'finished' ? (
-      <Badge variant="gray">Finalizado</Badge>
-    ) : match.status === 'live' ? (
-      <Badge variant="green">En vivo</Badge>
-    ) : (
-      <Badge variant="blue">Próximo</Badge>
-    )
+    match.status === 'finished' ? <Badge variant="gray">Finalizado</Badge>
+    : match.status === 'live'   ? <Badge variant="green">En vivo</Badge>
+    :                             <Badge variant="blue">Próximo</Badge>
 
-  // Points badge config
   const pointsBadge =
-    points === null
-      ? null
-      : points >= 4
-      ? { label: '⭐ +4 pts (exacto+penales)', cls: 'bg-yellow-500/20 text-yellow-400' }
-      : points === 3
-      ? { label: '⭐ +3 pts (exacto)', cls: 'bg-yellow-500/20 text-yellow-400' }
-      : points === 2
-      ? { label: '✓ +2 pts', cls: 'bg-green-500/20 text-green-400' }
-      : points === 1
-      ? { label: '✓ +1 pt', cls: 'bg-green-500/20 text-green-400' }
-      : { label: '✗ 0 pts', cls: 'bg-white/5 text-white/30' }
+    points === null ? null
+    : points >= 4   ? { label: '⭐ +4 pts (exacto+penales)', cls: 'bg-yellow-500/20 text-yellow-400' }
+    : points === 3  ? { label: '⭐ +3 pts (exacto)',         cls: 'bg-yellow-500/20 text-yellow-400' }
+    : points === 2  ? { label: '✓ +2 pts',                  cls: 'bg-green-500/20 text-green-400'   }
+    : points === 1  ? { label: '✓ +1 pt',                   cls: 'bg-green-500/20 text-green-400'   }
+    :                 { label: '✗ 0 pts',                   cls: 'bg-white/5 text-white/30'         }
+
+  const showPenaltyPicker = !inputsDisabled && penaltyRequired && !committedPenalty
+  const showPenaltyBadge  = !inputsDisabled && penaltyRequired && committedPenalty !== null
 
   return (
-    <Card className="hover:border-union-blue/40 transition-colors">
+    <div ref={cardRef}>
+    <Card className={cn(
+      'hover:border-union-blue/40 transition-colors',
+      highlighted && 'ring-2 ring-union-blue shadow-[0_0_24px_rgba(0,168,222,0.25)]'
+    )}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {match.group_name && <Badge variant="blue">Grupo {match.group_name}</Badge>}
@@ -113,14 +169,13 @@ export function MatchCard({ match, prediction, tournamentId, userId }: MatchCard
       <div className="flex items-center gap-3">
         {/* Home */}
         <div className="flex-1 flex flex-col items-center gap-1">
-          <TeamBadge flag={match.home_flag} />
-          <span className="text-sm font-semibold text-white text-center leading-tight">
-            {match.home_team}
-          </span>
+          <TeamBadge flag={match.home_flag} teamName={match.home_team} />
+          <span className="text-sm font-semibold text-white text-center leading-tight">{match.home_team}</span>
         </div>
 
-        {/* Center: result / inputs */}
+        {/* Center */}
         <div className="flex flex-col items-center gap-2 min-w-[120px]">
+          {/* Actual result */}
           {match.status === 'finished' ? (
             <div className="flex flex-col items-center gap-0.5">
               <div className="flex items-center gap-2">
@@ -138,135 +193,164 @@ export function MatchCard({ match, prediction, tournamentId, userId }: MatchCard
             <span className="text-white/30 text-sm font-medium">VS</span>
           )}
 
-          {!locked ? (
+          {/* Prediction inputs or countdown */}
+          {phaseLocked ? (
+            <div className="flex flex-col items-center gap-1 text-center px-2">
+              {phaseUnlockAt
+                ? <Countdown unlockAt={phaseUnlockAt} />
+                : <span className="text-[10px] text-white/30">Pendiente de clasificados</span>}
+            </div>
+          ) : locked && !prediction ? (
+            <div className="flex items-center gap-1 text-white/30 text-xs">
+              <Lock size={12} /> Sin pronóstico
+            </div>
+          ) : (
             <div className="flex flex-col items-center gap-2">
-              {/* Score inputs */}
+              {/* Score inputs — always visible, disabled when not editing */}
               <div className="flex items-center gap-1.5">
                 <input
-                  type="number"
-                  min="0"
-                  max="20"
+                  type="number" min="0" max="20"
                   value={home}
                   onChange={(e) => handleHomeChange(e.target.value)}
-                  className="w-10 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
-                  placeholder="0"
+                  disabled={inputsDisabled}
+                  className={cn(
+                    'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
+                    inputsDisabled
+                      ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
+                      : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
+                  )}
+                  placeholder="-"
                 />
                 <span className="text-white/30 text-xs">-</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="20"
+                  type="number" min="0" max="20"
                   value={away}
                   onChange={(e) => handleAwayChange(e.target.value)}
-                  className="w-10 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
-                  placeholder="0"
+                  disabled={inputsDisabled}
+                  className={cn(
+                    'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
+                    inputsDisabled
+                      ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
+                      : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
+                  )}
+                  placeholder="-"
                 />
               </div>
 
-              {/* Penalty picker — appears only in knockout draws */}
-              {penaltyRequired && (
+              {/* Penalty picker */}
+              {showPenaltyPicker && (
                 <div className="flex flex-col items-center gap-1.5 w-full">
-                  <span className="text-xs text-yellow-400 font-semibold text-center">
-                    ¿Quién gana en penales?
-                  </span>
+                  <span className="text-xs text-yellow-400 font-semibold text-center">¿Quién gana en penales?</span>
                   <div className="flex gap-1.5 w-full justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setPenaltyPred('home')}
-                      className={cn(
-                        'flex-1 max-w-[90px] px-2 py-1 rounded-md text-xs font-semibold transition-colors border truncate',
-                        penaltyPred === 'home'
-                          ? 'bg-union-blue text-white border-union-blue'
-                          : 'bg-union-navy border-union-blue/30 text-white/60 hover:text-white hover:border-union-blue/60'
-                      )}
-                    >
-                      {match.home_team}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPenaltyPred('away')}
-                      className={cn(
-                        'flex-1 max-w-[90px] px-2 py-1 rounded-md text-xs font-semibold transition-colors border truncate',
-                        penaltyPred === 'away'
-                          ? 'bg-union-blue text-white border-union-blue'
-                          : 'bg-union-navy border-union-blue/30 text-white/60 hover:text-white hover:border-union-blue/60'
-                      )}
-                    >
-                      {match.away_team}
-                    </button>
+                    {(['home', 'away'] as PenaltyWinner[]).map((side) => (
+                      <button
+                        key={side}
+                        type="button"
+                        onClick={() => setPenaltyPred(side)}
+                        className={cn(
+                          'flex-1 max-w-[90px] px-2 py-1 rounded-md text-xs font-semibold transition-colors border truncate',
+                          penaltyPred === side
+                            ? 'bg-union-blue text-white border-union-blue'
+                            : 'bg-union-navy border-union-blue/30 text-white/60 hover:text-white hover:border-union-blue/60'
+                        )}
+                      >
+                        {side === 'home' ? match.home_team : match.away_team}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
-            </div>
-          ) : prediction ? (
-            <div className="flex flex-col items-center gap-0.5">
-              <span
-                className={cn(
-                  'font-bold text-sm',
-                  points !== null && points > 0
-                    ? points >= 3
-                      ? 'text-yellow-400'
-                      : 'text-green-400'
-                    : 'text-white/40'
-                )}
-              >
-                {prediction.home_score_pred} - {prediction.away_score_pred}
-              </span>
-              {prediction.penalty_pred && (
+
+              {/* Committed penalty badge */}
+              {showPenaltyBadge && (
+                <button
+                  type="button"
+                  onClick={() => { setCommittedPenalty(null); setPenaltyPred(committedPenalty) }}
+                  className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full text-xs text-yellow-400 font-semibold hover:bg-yellow-500/25 transition-colors"
+                >
+                  🥅 Pen: {committedPenalty === 'home' ? match.home_team : match.away_team}
+                </button>
+              )}
+
+              {/* Saved penalty (view mode) */}
+              {inputsDisabled && prediction?.penalty_pred && (
                 <span className="text-xs text-white/40">
                   Pen: {prediction.penalty_pred === 'home' ? match.home_team : match.away_team}
                 </span>
               )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 text-white/30 text-xs">
-              <Lock size={12} />
-              Sin pronóstico
             </div>
           )}
         </div>
 
         {/* Away */}
         <div className="flex-1 flex flex-col items-center gap-1">
-          <TeamBadge flag={match.away_flag} />
-          <span className="text-sm font-semibold text-white text-center leading-tight">
-            {match.away_team}
-          </span>
+          <TeamBadge flag={match.away_flag} teamName={match.away_team} />
+          <span className="text-sm font-semibold text-white text-center leading-tight">{match.away_team}</span>
         </div>
       </div>
 
-      {/* Points badge + save button */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-union-blue/10">
-        {pointsBadge ? (
-          <span className={cn('text-xs font-bold px-2 py-0.5 rounded', pointsBadge.cls)}>
-            {pointsBadge.label}
-          </span>
-        ) : (
-          <span />
-        )}
+      {/* Footer */}
+      <div className="mt-3 pt-3 border-t border-union-blue/10 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {pointsBadge ? (
+              <span className={cn('text-xs font-bold px-2 py-0.5 rounded', pointsBadge.cls)}>
+                {pointsBadge.label}
+              </span>
+            ) : match.venue ? (
+              <span className="text-xs text-white/25 truncate block">{match.venue}</span>
+            ) : null}
+          </div>
 
-        {!locked && (
-          <Button
-            size="sm"
-            onClick={handleSave}
-            loading={upsert.isPending}
-            disabled={penaltyRequired && penaltyPred === null}
-            className="ml-auto"
-          >
-            {saved ? (
-              <>
-                <CheckCircle2 size={14} className="mr-1" /> Guardado
-              </>
-            ) : (
-              'Guardar'
+          <div className="flex items-center gap-2 shrink-0">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors"
+              >
+                <X size={13} /> Cancelar
+              </button>
             )}
-          </Button>
+
+            {!locked && !phaseLocked && (
+              prediction && !isEditing ? (
+                <Button size="sm" onClick={() => setIsEditing(true)}>
+                  {saved
+                    ? <><CheckCircle2 size={13} className="mr-1" /> Guardado</>
+                    : <><Pencil size={13} className="mr-1" /> Modificar pronóstico</>}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  loading={upsert.isPending}
+                  disabled={(!home && !away) || (penaltyRequired && penaltyPred === null && committedPenalty === null)}
+                >
+                  {saved
+                    ? <><CheckCircle2 size={14} className="mr-1" /> Guardado</>
+                    : 'Guardar'}
+                </Button>
+              )
+            )}
+
+            {phaseLocked && (
+              <Button size="sm" disabled>Guardar</Button>
+            )}
+          </div>
+        </div>
+
+        {/* Deadline / locked hint */}
+        {!locked && !phaseLocked && (
+          <p className="text-[10px] text-white/25 text-right">
+            Modificable hasta el {formatLockDeadline(match.match_date)}
+          </p>
+        )}
+        {locked && prediction && (
+          <p className="text-[10px] text-white/25 text-right italic">Pronóstico cerrado</p>
         )}
       </div>
-
-      {match.venue && (
-        <p className="text-xs text-white/25 mt-1 truncate">{match.venue}</p>
-      )}
     </Card>
+    </div>
   )
 }

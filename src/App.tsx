@@ -11,6 +11,7 @@ import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
 import Bracket from './pages/Bracket'
+import PaymentResult from './pages/PaymentResult'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 } },
@@ -46,6 +47,9 @@ function AppRoutes() {
       <Route path="/torneos" element={<Tournaments />} />
       <Route path="/tabla" element={<Leaderboard />} />
       <Route path="/bracket" element={<Bracket />} />
+      <Route path="/payment/success" element={<PaymentResult type="success" />} />
+      <Route path="/payment/failure" element={<PaymentResult type="failure" />} />
+      <Route path="/payment/pending" element={<PaymentResult type="pending" />} />
       {isAdmin && <Route path="/admin" element={<Admin />} />}
       <Route path="/perfil" element={<Profile />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Preview Escudos – Prode Quincho</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 32px;
+      color: white;
+    }
+    h1 { font-size: 20px; margin-bottom: 6px; color: #00a8de; }
+    p.sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 28px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: #0f2040;
+      border: 1px solid rgba(0,168,222,0.15);
+      border-radius: 14px;
+      padding: 18px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: rgba(0,168,222,0.5); }
+
+    .img-wrap {
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .img-wrap img {
+      max-width: 72px;
+      max-height: 72px;
+      object-fit: contain;
+    }
+
+    .name {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.3;
+    }
+    .badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 99px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .svg-badge { background: rgba(0,168,222,0.15); color: #00a8de; }
+    .png-badge { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+    .error { color: #f87171; font-size: 10px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>Preview Escudos — Prode Quincho</h1>
+  <p class="sub">Todos desde Wikimedia Commons · hovear para resaltar · azul = SVG, amarillo = PNG</p>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const clubs = [
+      { name: 'River Plate',        url: 'https://upload.wikimedia.org/wikipedia/commons/3/39/River_Plate_logo.svg',                                                                 fmt: 'SVG' },
+      { name: 'Boca Juniors',       url: 'https://upload.wikimedia.org/wikipedia/commons/8/83/Escudo_del_Club_Atl%C3%A9tico_Boca_Juniors.svg',                                      fmt: 'SVG' },
+      { name: 'Racing Club',        url: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Escudo_del_Racing_Club_de_Avellaneda.svg',                                            fmt: 'SVG' },
+      { name: 'Independiente',      url: 'https://upload.wikimedia.org/wikipedia/commons/d/db/Escudo_del_Club_Atl%C3%A9tico_Independiente.svg',                                     fmt: 'SVG' },
+      { name: 'San Lorenzo',        url: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Escudo_del_Club_Atl%C3%A9tico_San_Lorenzo_de_Almagro.svg',                            fmt: 'SVG' },
+      { name: 'Huracán',            url: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Escudo_del_Club_Atl%C3%A9tico_Hurac%C3%A1n.svg',                                     fmt: 'SVG' },
+      { name: 'Vélez Sársfield',    url: 'https://upload.wikimedia.org/wikipedia/commons/2/21/Escudo_del_Club_Atl%C3%A9tico_V%C3%A9lez_Sarsfield.svg',                             fmt: 'SVG' },
+      { name: 'Estudiantes LP',     url: 'https://upload.wikimedia.org/wikipedia/commons/6/68/Escudo_del_Club_Estudiantes_de_La_Plata.svg',                                         fmt: 'SVG' },
+      { name: 'Gimnasia LP',        url: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Gimnasia_y_Esgrima_La_Plata_logo.png',                                               fmt: 'PNG' },
+      { name: 'Belgrano',           url: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Escudo_de_Belgrano_de_C%C3%B3rdoba.svg',                                             fmt: 'SVG' },
+      { name: 'Talleres',           url: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Escudo_del_Club_Atl%C3%A9tico_Talleres.svg',                                         fmt: 'SVG' },
+      { name: 'Godoy Cruz',         url: 'https://upload.wikimedia.org/wikipedia/commons/8/84/Escudo_del_Club_Deportivo_Godoy_Cruz_Antonio_Tomba.svg',                              fmt: 'SVG' },
+      { name: 'Lanús',              url: 'https://upload.wikimedia.org/wikipedia/commons/8/84/Escudo_del_Club_Lan%C3%BAs.png',                                                      fmt: 'PNG' },
+      { name: 'Banfield',           url: 'https://upload.wikimedia.org/wikipedia/commons/a/a2/Escudo_del_Club_Atl%C3%A9tico_Banfield.svg',                                         fmt: 'SVG' },
+      { name: 'Defensa y Justicia', url: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Escudo_del_Club_Social_y_Deportivo_Defensa_y_Justicia.svg',                           fmt: 'SVG' },
+      { name: 'Instituto',          url: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Escudo_Instituto_Atletico_Central_Cordoba.svg',                                       fmt: 'SVG' },
+    ]
+
+    const grid = document.getElementById('grid')
+    clubs.forEach(({ name, url, fmt }) => {
+      const card = document.createElement('div')
+      card.className = 'card'
+
+      const wrap = document.createElement('div')
+      wrap.className = 'img-wrap'
+
+      const img = document.createElement('img')
+      img.src = url
+      img.alt = name
+      const err = document.createElement('span')
+      err.className = 'error'
+      err.textContent = '⚠ no carga'
+      img.onerror = () => { err.style.display = 'block'; img.style.display = 'none' }
+
+      wrap.appendChild(img)
+      wrap.appendChild(err)
+
+      const nameEl = document.createElement('div')
+      nameEl.className = 'name'
+      nameEl.textContent = name
+
+      const badge = document.createElement('span')
+      badge.className = `badge ${fmt === 'SVG' ? 'svg-badge' : 'png-badge'}`
+      badge.textContent = fmt
+
+      card.appendChild(wrap)
+      card.appendChild(nameEl)
+      card.appendChild(badge)
+      grid.appendChild(card)
+    })
+  </script>
+</body>
+</html>

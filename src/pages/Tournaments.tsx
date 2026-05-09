@@ -1,5 +1,9 @@
-import { useState } from 'react'
-import { Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
+  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard,
+} from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -7,10 +11,58 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { CreateTournamentModal } from '../components/tournaments/CreateTournamentModal'
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
-import { useUserTournaments, useGlobalTournament, useDeleteTournament } from '../hooks/useTournaments'
+import { useUserTournaments, useGlobalTournament, useDeleteTournament, useCreatePayment } from '../hooks/useTournaments'
+import { useMatches } from '../hooks/useMatches'
+import { usePredictions } from '../hooks/usePredictions'
 import { useAuthStore } from '../store/authStore'
-import type { Tournament } from '../types'
+import { cn } from '../lib/utils'
+import type { Tournament, MatchStage } from '../types'
 
+// ─── Completion hook ──────────────────────────────────────────
+const STAGE_ORDER: MatchStage[] = [
+  'group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
+]
+
+function usePredictionCompletion(
+  userId: string | undefined,
+  tournamentId: string,
+  competition: string | null,
+) {
+  const { data: matches } = useMatches(competition ?? undefined)
+  const { data: predictions } = usePredictions(userId, tournamentId)
+
+  return useMemo(() => {
+    const allMatches = matches ?? []
+
+    // For apertura_2026, only count matches in stages that are currently open for prediction
+    let countableMatches = allMatches
+    if (competition === 'apertura_2026') {
+      const stageSet = new Set(allMatches.map((m) => m.stage))
+      const orderedStages = STAGE_ORDER.filter((s) => stageSet.has(s))
+
+      // Find the first stage that still has unfinished matches — that's the last open stage
+      const firstLockedIdx = orderedStages.findIndex((_stage, i) => {
+        if (i === 0) return false
+        const prevStage = orderedStages[i - 1]
+        return allMatches.some((m) => m.stage === prevStage && m.status !== 'finished')
+      })
+
+      const openStages = new Set(
+        firstLockedIdx === -1 ? orderedStages : orderedStages.slice(0, firstLockedIdx)
+      )
+      countableMatches = allMatches.filter((m) => openStages.has(m.stage))
+    }
+
+    const matchIds = new Set(countableMatches.map((m) => m.id))
+    const total = countableMatches.length
+    const filled = (predictions ?? []).filter((p) => matchIds.has(p.match_id)).length
+    const isComplete = total > 0 && filled >= total
+    const pct = total > 0 ? Math.round((filled / total) * 100) : 0
+    return { total, filled, isComplete, pct }
+  }, [matches, predictions, competition])
+}
+
+// ─── Page ─────────────────────────────────────────────────────
 export default function Tournaments() {
   const { user } = useAuthStore()
   const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
@@ -39,7 +91,7 @@ export default function Tournaments() {
       {globalTournament && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-2">Torneo Global</h2>
-          <TournamentCard tournament={globalTournament} isGlobal currentUserId={user?.id} />
+          <TournamentCard tournament={globalTournament} isGlobal userId={user?.id} />
         </div>
       )}
 
@@ -52,7 +104,7 @@ export default function Tournaments() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {myTournaments
               .filter((t) => t.type === 'friends')
-              .map((t) => <TournamentCard key={t.id} tournament={t} currentUserId={user?.id} />)}
+              .map((t) => <TournamentCard key={t.id} tournament={t} userId={user?.id} />)}
           </div>
         ) : (
           <Card className="text-center py-10">
@@ -72,14 +124,39 @@ export default function Tournaments() {
   )
 }
 
-function TournamentCard({ tournament, isGlobal, currentUserId }: {
+// ─── Card ─────────────────────────────────────────────────────
+function TournamentCard({ tournament, isGlobal, userId }: {
   tournament: Tournament
   isGlobal?: boolean
-  currentUserId?: string
+  userId?: string
 }) {
+  const navigate = useNavigate()
   const deleteTournament = useDeleteTournament()
+  const createPayment = useCreatePayment()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const isCreator = !isGlobal && tournament.created_by === currentUserId
+  const [copied, setCopied] = useState(false)
+  const isCreator = !isGlobal
+
+  const needsPayment = tournament.entry_fee > 0 && tournament.user_paid === false
+
+  const { total, filled, isComplete, pct } = usePredictionCompletion(
+    userId,
+    tournament.id,
+    tournament.competition ?? null,
+  )
+
+  // Destination: knockout tournaments go to bracket ONLY when all predictions filled
+  const isKnockoutOnly = tournament.competition === 'apertura_2026'
+  const destination = isKnockoutOnly && isComplete
+    ? `/bracket?t=${tournament.id}`
+    : `/predicciones?t=${tournament.id}`
+
+  // CTA label & icon
+  const { ctaLabel, CtaIcon } = isComplete && isKnockoutOnly
+    ? { ctaLabel: 'Ver llave', CtaIcon: LayoutList }
+    : isComplete
+    ? { ctaLabel: 'Ver predicciones', CtaIcon: LayoutList }
+    : { ctaLabel: 'Completar pronósticos', CtaIcon: ClipboardList }
 
   const competitionLabel = tournament.competition === 'apertura_2026'
     ? '🇦🇷 Apertura 2026'
@@ -87,54 +164,162 @@ function TournamentCard({ tournament, isGlobal, currentUserId }: {
     ? '🌎 Mundial 2026'
     : null
 
+  // Progress bar color
+  const progressColor = isComplete
+    ? 'bg-green-500'
+    : pct > 0
+    ? 'bg-yellow-400'
+    : 'bg-white/10'
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!tournament.invite_code) return
+    navigator.clipboard.writeText(tournament.invite_code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   async function handleDelete() {
     await deleteTournament.mutateAsync(tournament.id)
     setConfirmDelete(false)
   }
 
+  async function handlePay(e: React.MouseEvent) {
+    e.stopPropagation()
+    const result = await createPayment.mutateAsync(tournament.id)
+    // En sandbox usar sandbox_init_point, en prod usar init_point
+    window.open(result.init_point, '_blank')
+  }
+
+  function handleCardClick() {
+    if (needsPayment) return
+    navigate(destination)
+  }
+
   return (
     <>
-      <Card glow={isGlobal} className="hover:border-union-blue/40 transition-colors">
-        <div className="flex items-start justify-between mb-3">
-          <div className="w-10 h-10 bg-union-blue/20 rounded-xl flex items-center justify-center">
-            {isGlobal ? <Star size={18} className="text-union-blue" /> : <Trophy size={18} className="text-union-blue" />}
+      <div className={cn('group', needsPayment ? 'cursor-default' : 'cursor-pointer')} onClick={handleCardClick}>
+        <Card glow={isGlobal} className={cn(
+          'transition-all',
+          needsPayment
+            ? 'border-yellow-500/30'
+            : 'hover:border-union-blue/60 group-hover:bg-union-navy-light/60'
+        )}>
+
+          {/* Header row */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="w-10 h-10 bg-union-blue/20 rounded-xl flex items-center justify-center group-hover:bg-union-blue/30 transition-colors">
+              {isGlobal ? <Star size={18} className="text-union-blue" /> : <Trophy size={18} className="text-union-blue" />}
+            </div>
+            <div className="flex gap-1 items-center">
+              {tournament.entry_fee > 0
+                ? <Badge variant="yellow"><Lock size={10} className="mr-1" />Pago</Badge>
+                : <Badge variant="green"><Unlock size={10} className="mr-1" />Gratis</Badge>}
+              {isGlobal && <Badge variant="blue">Global</Badge>}
+              {isCreator && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+                  className="p-1 text-white/30 hover:text-red-400 transition-colors ml-1"
+                  title="Eliminar torneo"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex gap-1 items-center">
-            {tournament.entry_fee > 0 ? (
-              <Badge variant="yellow"><Lock size={10} className="mr-1" />Pago</Badge>
-            ) : (
-              <Badge variant="green"><Unlock size={10} className="mr-1" />Gratis</Badge>
-            )}
-            {isGlobal && <Badge variant="blue">Global</Badge>}
-            {isCreator && (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="p-1 text-white/30 hover:text-red-400 transition-colors ml-1"
-                title="Eliminar torneo"
+
+          {/* Name & meta */}
+          <h3 className="font-semibold text-white mb-0.5">{tournament.name}</h3>
+          {competitionLabel && <p className="text-xs text-white/40 mb-1">{competitionLabel}</p>}
+          <div className="flex items-center gap-1 text-xs text-white/40 mb-3">
+            <Users size={12} />
+            {tournament.member_count ?? 0} participante{tournament.member_count !== 1 ? 's' : ''}
+          </div>
+
+          {/* Payment banner */}
+          {needsPayment ? (
+            <div className="mb-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-3">
+              <p className="text-yellow-400 text-xs font-semibold mb-2">
+                Pagá la entrada para activar tus pronósticos
+              </p>
+              <Button
+                size="sm"
+                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
+                onClick={handlePay}
+                loading={createPayment.isPending}
               >
-                <Trash2 size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-        <h3 className="font-semibold text-white mb-1">{tournament.name}</h3>
-        {competitionLabel && (
-          <p className="text-xs text-white/40 mb-1">{competitionLabel}</p>
-        )}
-        <div className="flex items-center gap-1 text-xs text-white/40 mb-3">
-          <Users size={12} />
-          {tournament.member_count ?? 0} participante{tournament.member_count !== 1 ? 's' : ''}
-        </div>
-        {tournament.entry_fee > 0 && (
-          <p className="text-sm text-yellow-400 font-medium">${tournament.entry_fee} ARS</p>
-        )}
-        {tournament.invite_code && (
-          <div className="mt-2 bg-union-navy rounded-lg px-3 py-1.5 text-center">
-            <p className="text-xs text-white/30">Código</p>
-            <p className="text-sm font-bold tracking-wider text-union-blue">{tournament.invite_code}</p>
-          </div>
-        )}
-      </Card>
+                <CreditCard size={14} className="mr-1.5" />
+                Pagar ${tournament.entry_fee} ARS
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Prediction progress */}
+              {total > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-white/40">Mis pronósticos</span>
+                    <span className={cn(
+                      'text-[11px] font-semibold',
+                      isComplete ? 'text-green-400' : pct > 0 ? 'text-yellow-400' : 'text-white/30'
+                    )}>
+                      {isComplete ? '✓ Completo' : `${filled}/${total}`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-all duration-500', progressColor)}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {tournament.entry_fee > 0 && (
+                <p className="text-sm text-green-400 font-medium mb-2">✓ Entrada pagada</p>
+              )}
+            </>
+          )}
+
+          {/* Invite code */}
+          {tournament.invite_code && (
+            <button
+              onClick={handleCopy}
+              className="group/code mb-3 w-full bg-union-navy hover:bg-union-navy-light rounded-lg px-3 py-2 flex items-center justify-between gap-2 transition-colors border border-transparent hover:border-union-blue/20"
+              title="Copiar código"
+            >
+              <div className="text-left">
+                <p className="text-[10px] text-white/30 leading-none mb-0.5">Código de invitación</p>
+                <p className="text-sm font-bold tracking-widest text-union-blue">{tournament.invite_code}</p>
+              </div>
+              <div className={cn(
+                'shrink-0 p-1.5 rounded-md transition-all',
+                copied
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-union-blue/10 text-union-blue/50 group-hover/code:bg-union-blue/20 group-hover/code:text-union-blue'
+              )}>
+                {copied ? <Check size={13} /> : <Copy size={13} />}
+              </div>
+            </button>
+          )}
+
+          {/* CTA — solo si ya pagó */}
+          {!needsPayment && (
+            <div className={cn(
+              'flex items-center justify-end gap-1 text-xs font-semibold transition-colors pt-2 border-t border-union-blue/10',
+              isComplete
+                ? 'text-green-400 group-hover:text-green-300'
+                : pct > 0
+                ? 'text-yellow-400 group-hover:text-yellow-300'
+                : 'text-union-blue group-hover:text-union-blue-light'
+            )}>
+              <CtaIcon size={12} />
+              {ctaLabel}
+              <ChevronRight size={13} />
+            </div>
+          )}
+        </Card>
+      </div>
 
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Eliminar torneo">
         <p className="text-white/70 mb-4">
