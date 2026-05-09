@@ -13,7 +13,8 @@ export default function Dashboard() {
   const { user, profile } = useAuthStore()
   const { data: matches } = useMatches()
   const { data: globalTournament } = useGlobalTournament()
-  const { data: leaderboard } = useLeaderboard(globalTournament?.id)
+  const hasLive = matches?.some((m) => m.status === 'live') ?? false
+  const { data: leaderboard } = useLeaderboard(globalTournament?.id, hasLive)
 
   const upcoming = matches?.filter((m) => m.status === 'upcoming').slice(0, 3) ?? []
   const live = matches?.filter((m) => m.status === 'live') ?? []
