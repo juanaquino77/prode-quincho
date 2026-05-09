@@ -69,20 +69,34 @@ export default function Dashboard() {
               </Card>
             ) : (
               (live.length > 0 ? live : upcoming).map((match) => (
-                <Card key={match.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ClubFlag teamName={match.home_team} size={28} />
-                    <div>
-                      <p className="text-sm font-medium text-white">{match.home_team} vs {match.away_team}</p>
-                      <p className="text-xs text-white/40">{formatShortDate(match.match_date)}</p>
+                <Card key={match.id} className={match.status === 'live' ? 'border-red-500/20' : ''}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <ClubFlag teamName={match.home_team} size={28} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{match.home_team} vs {match.away_team}</p>
+                        <p className="text-xs text-white/40">{formatShortDate(match.match_date)}</p>
+                      </div>
+                      <ClubFlag teamName={match.away_team} size={28} />
                     </div>
-                    <ClubFlag teamName={match.away_team} size={28} />
+
+                    {match.status === 'live' && match.home_score !== null && match.away_score !== null ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-lg font-bold text-white tabular-nums">{match.home_score}</span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase tracking-wide">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            vivo
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-white tabular-nums">{match.away_score}</span>
+                      </div>
+                    ) : match.status === 'live' ? (
+                      <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full shrink-0">En vivo</span>
+                    ) : (
+                      <Lock size={14} className="text-white/20 shrink-0" />
+                    )}
                   </div>
-                  {match.status === 'live' ? (
-                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">En vivo</span>
-                  ) : (
-                    <Lock size={14} className="text-white/20" />
-                  )}
                 </Card>
               ))
             )}
