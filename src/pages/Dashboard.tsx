@@ -12,7 +12,7 @@ import { ClubFlag } from '../components/ui/ClubFlag'
 
 export default function Dashboard() {
   const { user, profile } = useAuthStore()
-  const { data: matches } = useMatches()
+  const { data: allMatches } = useMatches()
   const { data: globalTournament } = useGlobalTournament()
   const { data: myTournaments } = useUserTournaments(user?.id)
   const { selectedTournamentId } = useTournamentStore()
@@ -25,11 +25,21 @@ export default function Dashboard() {
   const activeTournament = [...(globalTournament ? [globalTournament] : []), ...(myTournaments ?? [])]
     .find((t) => t.id === activeTournamentId)
 
-  const hasLive = matches?.some((m) => m.status === 'live') ?? false
+  // Solo mostrar partidos de competiciones en las que el usuario está inscripto.
+  // El torneo global (Mundial) se incluye siempre; los de amigos solo si el usuario pertenece.
+  const userCompetitions = new Set<string>([
+    ...(globalTournament?.competition ? [globalTournament.competition] : []),
+    ...(myTournaments ?? []).map((t) => t.competition).filter(Boolean) as string[],
+  ])
+  const matches = userCompetitions.size > 0
+    ? (allMatches ?? []).filter((m) => userCompetitions.has(m.competition))
+    : (allMatches ?? [])
+
+  const hasLive = matches.some((m) => m.status === 'live')
   const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
 
-  const upcoming = matches?.filter((m) => m.status === 'upcoming').slice(0, 3) ?? []
-  const live = matches?.filter((m) => m.status === 'live') ?? []
+  const upcoming = matches.filter((m) => m.status === 'upcoming').slice(0, 3)
+  const live = matches.filter((m) => m.status === 'live')
   const top3 = leaderboard?.slice(0, 3) ?? []
   const myRank = leaderboard?.find((e) => e.user_id === user?.id)
 
