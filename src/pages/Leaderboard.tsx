@@ -1,8 +1,11 @@
+import { useMemo } from 'react'
 import { Layout } from '../components/layout/Layout'
 import { LeaderboardTable } from '../components/leaderboard/LeaderboardTable'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
+import { useMatches } from '../hooks/useMatches'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
+import { DEFAULT_RULES } from '../types'
 import type { Tournament } from '../types'
 
 export default function Leaderboard() {
@@ -12,23 +15,48 @@ export default function Leaderboard() {
   const { selectedTournamentId, setSelectedTournamentId } = useTournamentStore()
 
   const tournamentId = selectedTournamentId ?? globalTournament?.id
-  const { data: leaderboard, isLoading } = useLeaderboard(tournamentId)
 
   const selectedTournament = [...(globalTournament ? [globalTournament] : []), ...(myTournaments ?? [])]
     .find((t) => t.id === tournamentId)
+
+  const { data: matches } = useMatches(selectedTournament?.competition ?? undefined)
+  const hasLive = useMemo(() => (matches ?? []).some((m) => m.status === 'live'), [matches])
+
+  const { data: leaderboard, isLoading, dataUpdatedAt } = useLeaderboard(tournamentId, hasLive)
 
   const allTournaments: Tournament[] = [
     ...(globalTournament ? [globalTournament] : []),
     ...(myTournaments?.filter((t) => t.type === 'friends') ?? []),
   ]
 
+  const rules = selectedTournament?.rules ?? DEFAULT_RULES
+
+  const rulesSubtitle = [
+    `${rules.pts_outcome} pt resultado`,
+    `${rules.pts_exact} pts exacto`,
+    rules.pts_penalty_correct > 0 && `+${rules.pts_penalty_correct} pt penales`,
+  ].filter(Boolean).join(' · ')
+
+  const updatedAt = hasLive && dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    : null
+
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Tabla de Posiciones</h1>
-        <p className="text-white/50 text-sm mt-0.5">
-          1 pt resultado correcto · 3 pts marcador exacto · +1 pt penales acertados
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Tabla de Posiciones</h1>
+            <p className="text-white/50 text-sm mt-0.5">{rulesSubtitle}</p>
+          </div>
+          {hasLive && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs text-red-400 font-medium">EN VIVO</span>
+              {updatedAt && <span className="text-xs text-white/30">{updatedAt}</span>}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tournament selector */}

@@ -12,6 +12,10 @@ export function useMatchesRealtime() {
       .channel('matches-realtime')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, () => {
         qc.invalidateQueries({ queryKey: ['matches'] })
+        qc.invalidateQueries({ queryKey: ['leaderboard'] })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'predictions' }, () => {
+        qc.invalidateQueries({ queryKey: ['leaderboard'] })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }

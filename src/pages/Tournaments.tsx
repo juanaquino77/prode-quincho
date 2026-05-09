@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
-  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard,
+  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard, ScrollText,
 } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
@@ -11,6 +11,7 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { CreateTournamentModal } from '../components/tournaments/CreateTournamentModal'
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
+import { TournamentRulesModal } from '../components/tournaments/TournamentRulesModal'
 import { useUserTournaments, useGlobalTournament, useDeleteTournament, useCreatePayment } from '../hooks/useTournaments'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
@@ -135,6 +136,7 @@ function TournamentCard({ tournament, isGlobal, userId }: {
   const createPayment = useCreatePayment()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
   const isCreator = !isGlobal
 
   const needsPayment = tournament.entry_fee > 0 && tournament.user_paid === false
@@ -305,17 +307,26 @@ function TournamentCard({ tournament, isGlobal, userId }: {
 
           {/* CTA — solo si ya pagó */}
           {!needsPayment && (
-            <div className={cn(
-              'flex items-center justify-end gap-1 text-xs font-semibold transition-colors pt-2 border-t border-union-blue/10',
-              isComplete
-                ? 'text-green-400 group-hover:text-green-300'
-                : pct > 0
-                ? 'text-yellow-400 group-hover:text-yellow-300'
-                : 'text-union-blue group-hover:text-union-blue-light'
-            )}>
-              <CtaIcon size={12} />
-              {ctaLabel}
-              <ChevronRight size={13} />
+            <div className="flex items-center justify-between pt-2 border-t border-union-blue/10">
+              <button
+                onClick={(e) => { e.stopPropagation(); setRulesOpen(true) }}
+                className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                <ScrollText size={11} />
+                Ver reglas
+              </button>
+              <div className={cn(
+                'flex items-center gap-1 text-xs font-semibold transition-colors',
+                isComplete
+                  ? 'text-green-400 group-hover:text-green-300'
+                  : pct > 0
+                  ? 'text-yellow-400 group-hover:text-yellow-300'
+                  : 'text-union-blue group-hover:text-union-blue-light'
+              )}>
+                <CtaIcon size={12} />
+                {ctaLabel}
+                <ChevronRight size={13} />
+              </div>
             </div>
           )}
         </Card>
@@ -330,6 +341,13 @@ function TournamentCard({ tournament, isGlobal, userId }: {
           <Button variant="secondary" onClick={() => setConfirmDelete(false)} className="flex-1">Cancelar</Button>
         </div>
       </Modal>
+
+      <TournamentRulesModal
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        tournamentName={tournament.name}
+        rules={tournament.rules}
+      />
     </>
   )
 }

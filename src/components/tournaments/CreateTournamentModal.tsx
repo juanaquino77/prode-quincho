@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Copy, Check, Trophy } from 'lucide-react'
+import { Copy, Check, Trophy, ChevronDown, ChevronUp } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
@@ -20,6 +20,10 @@ const schema = z.object({
   competition: z.string().min(1),
   entry_fee: z.coerce.number().min(0, 'Debe ser mayor o igual a 0'),
   club_fee_percentage: z.coerce.number().min(0).max(100),
+  pts_exact: z.coerce.number().min(0).max(20),
+  pts_outcome: z.coerce.number().min(0).max(20),
+  pts_penalty_correct: z.coerce.number().min(0).max(10),
+  pts_penalty_wrong_deduct: z.coerce.number().min(0).max(10),
 })
 type FormData = z.infer<typeof schema>
 
@@ -32,20 +36,35 @@ interface Props {
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { entry_fee: 0, club_fee_percentage: 10, competition: 'apertura_2026' },
+    defaultValues: {
+      entry_fee: 0,
+      club_fee_percentage: 10,
+      competition: 'apertura_2026',
+      pts_exact: 3,
+      pts_outcome: 1,
+      pts_penalty_correct: 1,
+      pts_penalty_wrong_deduct: 1,
+    },
   })
   const createTournament = useCreateTournament()
   const [created, setCreated] = useState<Tournament | null>(null)
   const [copied, setCopied] = useState(false)
+  const [showRules, setShowRules] = useState(true)
 
   async function onSubmit(data: FormData) {
-    const t = await createTournament.mutateAsync({ ...data, created_by: userId })
+    const { pts_exact, pts_outcome, pts_penalty_correct, pts_penalty_wrong_deduct, ...rest } = data
+    const t = await createTournament.mutateAsync({
+      ...rest,
+      created_by: userId,
+      rules: { pts_exact, pts_outcome, pts_penalty_correct, pts_penalty_wrong_deduct },
+    })
     setCreated(t)
   }
 
   function handleClose() {
     setCreated(null)
     reset()
+    setShowRules(false)
     onClose()
   }
 
@@ -76,6 +95,52 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
           <Input label="Inscripción (ARS)" type="number" min="0" placeholder="0 = gratuito" error={errors.entry_fee?.message} {...register('entry_fee')} />
           <Input label="% para el club" type="number" min="0" max="100" placeholder="10" error={errors.club_fee_percentage?.message} {...register('club_fee_percentage')} />
           <p className="text-xs text-white/40">El resto del pozo va al ganador del torneo.</p>
+
+          {/* Reglas de puntuación */}
+          <div className="border border-union-blue/20 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowRules((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-union-blue-light hover:bg-union-blue/5 transition-colors"
+            >
+              <span>Reglas de puntuación</span>
+              {showRules ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+            {showRules && (
+              <div className="px-4 pb-4 space-y-3 border-t border-union-blue/10 pt-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Marcador exacto (pts)"
+                    type="number" min="0" max="20"
+                    error={errors.pts_exact?.message}
+                    {...register('pts_exact')}
+                  />
+                  <Input
+                    label="Resultado correcto (pts)"
+                    type="number" min="0" max="20"
+                    error={errors.pts_outcome?.message}
+                    {...register('pts_outcome')}
+                  />
+                </div>
+                <p className="text-[11px] text-white/30">Penales (solo empates en eliminatorias)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Penales acertados (+pts)"
+                    type="number" min="0" max="10"
+                    error={errors.pts_penalty_correct?.message}
+                    {...register('pts_penalty_correct')}
+                  />
+                  <Input
+                    label="Penales errados en exacto (-pts)"
+                    type="number" min="0" max="10"
+                    error={errors.pts_penalty_wrong_deduct?.message}
+                    {...register('pts_penalty_wrong_deduct')}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button type="submit" loading={createTournament.isPending} className="w-full">
             Crear torneo
           </Button>

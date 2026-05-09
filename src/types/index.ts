@@ -35,6 +35,20 @@ export interface Match {
   created_at: string
 }
 
+export interface TournamentRules {
+  pts_exact: number
+  pts_outcome: number
+  pts_penalty_correct: number
+  pts_penalty_wrong_deduct: number
+}
+
+export const DEFAULT_RULES: TournamentRules = {
+  pts_exact: 3,
+  pts_outcome: 1,
+  pts_penalty_correct: 1,
+  pts_penalty_wrong_deduct: 1,
+}
+
 export interface Tournament {
   id: string
   name: string
@@ -46,6 +60,7 @@ export interface Tournament {
   club_fee_percentage: number
   is_active: boolean
   competition: string | null
+  rules: TournamentRules
   created_at: string
   member_count?: number
   user_joined?: boolean

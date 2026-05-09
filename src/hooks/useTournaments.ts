@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Tournament, LeaderboardEntry, Payment } from '../types'
+import type { Tournament, TournamentRules, LeaderboardEntry, Payment } from '../types'
+import { DEFAULT_RULES } from '../types'
 import { generateInviteCode } from '../lib/utils'
 
 export function useTournaments() {
@@ -72,11 +73,12 @@ export function useCreateTournament() {
       club_fee_percentage: number
       created_by: string
       competition?: string | null
+      rules?: TournamentRules
     }) => {
       const invite_code = generateInviteCode()
       const { data, error } = await supabase
         .from('tournaments')
-        .insert({ ...t, type: 'friends', invite_code })
+        .insert({ ...t, type: 'friends', invite_code, rules: t.rules ?? DEFAULT_RULES })
         .select()
         .single()
       if (error) throw error
@@ -139,10 +141,11 @@ export function useDeleteTournament() {
   })
 }
 
-export function useLeaderboard(tournamentId: string | undefined) {
+export function useLeaderboard(tournamentId: string | undefined, hasLive = false) {
   return useQuery({
     queryKey: ['leaderboard', tournamentId],
     enabled: !!tournamentId,
+    refetchInterval: hasLive ? 30_000 : false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_leaderboard', {
         p_tournament_id: tournamentId,
