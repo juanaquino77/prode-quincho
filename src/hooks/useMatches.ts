@@ -1,6 +1,22 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Match } from '../types'
+
+/** Suscripción Realtime: invalida el caché de matches cuando cambia la DB.
+ *  Llamar una sola vez desde App.tsx o Layout. */
+export function useMatchesRealtime() {
+  const qc = useQueryClient()
+  useEffect(() => {
+    const channel = supabase
+      .channel('matches-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, () => {
+        qc.invalidateQueries({ queryKey: ['matches'] })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [qc])
+}
 
 export function useMatches(competition?: string) {
   return useQuery({
