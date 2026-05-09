@@ -289,6 +289,22 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
         </div>
       </div>
 
+      {/* Banner EN VIVO — solo cuando el partido se está jugando */}
+      {match.status === 'live' && match.home_score !== null && match.away_score !== null && (
+        <div className="mt-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+          <span className="text-xs font-semibold text-white/60 truncate flex-1">{match.home_team}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-base font-bold text-white tabular-nums">{match.home_score}</span>
+            <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase tracking-wide">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              En vivo
+            </span>
+            <span className="text-base font-bold text-white tabular-nums">{match.away_score}</span>
+          </div>
+          <span className="text-xs font-semibold text-white/60 truncate flex-1 text-right">{match.away_team}</span>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-union-blue/10 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
