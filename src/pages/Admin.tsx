@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -73,10 +73,10 @@ const matchSchema = z.object({
 type MatchFormData = z.infer<typeof matchSchema>
 
 // ─── Admin page ───────────────────────────────────────────────
-type Tab = 'matches' | 'users'
+type Tab = 'results' | 'matches' | 'users'
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<Tab>('matches')
+  const [activeTab, setActiveTab] = useState<Tab>('results')
 
   return (
     <Layout>
@@ -88,8 +88,9 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0">
         {([
-          { id: 'matches', label: 'Partidos', icon: Calendar },
-          { id: 'users',   label: 'Usuarios', icon: Users },
+          { id: 'results', label: 'Resultados', icon: ClipboardList },
+          { id: 'matches', label: 'Partidos',   icon: Calendar },
+          { id: 'users',   label: 'Usuarios',   icon: Users },
         ] as { id: Tab; label: string; icon: typeof Calendar }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -107,9 +108,134 @@ export default function Admin() {
         ))}
       </div>
 
+      {activeTab === 'results' && <ResultsTab />}
       {activeTab === 'matches' && <MatchesTab />}
       {activeTab === 'users'   && <UsersTab />}
     </Layout>
+  )
+}
+
+// ─── Results tab ──────────────────────────────────────────────
+function ResultsTab() {
+  const { data: matches, isLoading } = useMatches()
+  const upsert = useUpsertMatch()
+  const [scores, setScores] = useState<Record<string, { home: string; away: string; pen: string; status: string }>>({})
+  const [saved, setSaved] = useState<Record<string, boolean>>({})
+
+  // Show only non-group matches (knockout) not yet finished, sorted by date
+  const relevant = (matches ?? [])
+    .filter((m) => m.stage !== 'group')
+    .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+
+  function getRow(m: Match) {
+    return scores[m.id] ?? {
+      home: m.home_score?.toString() ?? '',
+      away: m.away_score?.toString() ?? '',
+      pen: m.penalty_winner ?? '',
+      status: m.status,
+    }
+  }
+
+  function setField(id: string, field: string, val: string) {
+    setScores((prev) => ({ ...prev, [id]: { ...getRow({ id } as Match), ...scores[id], [field]: val } }))
+  }
+
+  async function handleSave(m: Match) {
+    const row = getRow(m)
+    const home = parseInt(row.home)
+    const away = parseInt(row.away)
+    await upsert.mutateAsync({
+      ...m,
+      home_score: isNaN(home) ? null : home,
+      away_score: isNaN(away) ? null : away,
+      penalty_winner: (row.pen || null) as 'home' | 'away' | null,
+      status: row.status as Match['status'],
+    })
+    setSaved((prev) => ({ ...prev, [m.id]: true }))
+    setTimeout(() => setSaved((prev) => ({ ...prev, [m.id]: false })), 2000)
+  }
+
+  const KNOCKOUT = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
+
+  if (isLoading) return <p className="text-white/40">Cargando...</p>
+
+  return (
+    <div className="space-y-2">
+      {relevant.map((m) => {
+        const row = getRow(m)
+        const homeVal = parseInt(row.home)
+        const awayVal = parseInt(row.away)
+        const isDraw = !isNaN(homeVal) && !isNaN(awayVal) && homeVal === awayVal
+        const isKnockout = KNOCKOUT.includes(m.stage)
+        const showPen = isKnockout && isDraw
+
+        return (
+          <Card key={m.id} className="space-y-2">
+            {/* Match header */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Badge variant={m.status === 'finished' ? 'gray' : m.status === 'live' ? 'green' : 'blue'}>
+                  {getStageName(m.stage)}
+                </Badge>
+                <span className="text-xs text-white/40">{formatShortDate(m.match_date)}</span>
+              </div>
+              <select
+                value={row.status}
+                onChange={(e) => setField(m.id, 'status', e.target.value)}
+                className="text-xs bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-union-blue"
+              >
+                <option value="upcoming">Próximo</option>
+                <option value="live">En vivo</option>
+                <option value="finished">Finalizado</option>
+              </select>
+            </div>
+
+            {/* Score row */}
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm font-semibold text-white truncate text-right">{m.home_team}</span>
+              <input
+                type="number" min="0" max="20"
+                value={row.home}
+                onChange={(e) => setField(m.id, 'home', e.target.value)}
+                className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
+                placeholder="—"
+              />
+              <span className="text-white/30 text-xs font-bold">-</span>
+              <input
+                type="number" min="0" max="20"
+                value={row.away}
+                onChange={(e) => setField(m.id, 'away', e.target.value)}
+                className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
+                placeholder="—"
+              />
+              <span className="flex-1 text-sm font-semibold text-white truncate">{m.away_team}</span>
+              <Button size="sm" onClick={() => handleSave(m)} loading={upsert.isPending} className="shrink-0">
+                {saved[m.id] ? '✓' : <Save size={13} />}
+              </Button>
+            </div>
+
+            {/* Penalty row */}
+            {showPen && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-yellow-400 font-semibold">Pen:</span>
+                <select
+                  value={row.pen}
+                  onChange={(e) => setField(m.id, 'pen', e.target.value)}
+                  className="flex-1 text-xs bg-union-navy-light border border-yellow-500/30 rounded-lg text-white px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                >
+                  <option value="">— Sin definir —</option>
+                  <option value="home">{m.home_team}</option>
+                  <option value="away">{m.away_team}</option>
+                </select>
+              </div>
+            )}
+          </Card>
+        )
+      })}
+      {relevant.length === 0 && (
+        <Card className="text-center py-8 text-white/40 text-sm">No hay partidos eliminatorios cargados</Card>
+      )}
+    </div>
   )
 }
 

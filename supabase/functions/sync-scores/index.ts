@@ -45,18 +45,38 @@ Deno.serve(async (req) => {
       if (await upsertMatch(supabase, fix, 'live')) updatedLive++
     }
 
-    // ── 2. Partidos FINALIZADOS hoy ──────────────────────────
+    // ── 2. Partidos FINALIZADOS hoy (FT, AET, PEN) ──────────
+    // Usamos date range para cubrir partidos que empezaron ayer ART pero terminaron hoy UTC
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
     const ftRes = await fetch(
-      `${API_URL}/fixtures?league=${LEAGUE_ID}&season=${SEASON}&status=FT&date=${today}`,
+      `${API_URL}/fixtures?league=${LEAGUE_ID}&season=${SEASON}&from=${yesterday}&to=${today}`,
       { headers: apiHeaders },
     )
     const ftData = await ftRes.json()
-    for (const fix of ftData.response ?? []) {
+    const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO']
+    const getStatus = (f: Record<string, unknown>) =>
+      ((f.fixture as Record<string, unknown>)?.status as Record<string, unknown>)?.short as string ?? ''
+    const finishedFixtures = (ftData.response ?? []).filter(
+      (f: Record<string, unknown>) => FINISHED_STATUSES.includes(getStatus(f))
+    )
+
+    console.log(`sync-scores: API live=${liveData.response?.length ?? 0} finished=${finishedFixtures.length}`)
+    console.log('Live fixtures:', JSON.stringify((liveData.response ?? []).map((f: Record<string, unknown>) => ({
+      home: ((f.teams as Record<string, unknown>)?.home as Record<string, unknown>)?.name,
+      away: ((f.teams as Record<string, unknown>)?.away as Record<string, unknown>)?.name,
+      status: getStatus(f), goals: f.goals,
+    }))))
+    console.log('Finished fixtures:', JSON.stringify(finishedFixtures.map((f: Record<string, unknown>) => ({
+      home: ((f.teams as Record<string, unknown>)?.home as Record<string, unknown>)?.name,
+      away: ((f.teams as Record<string, unknown>)?.away as Record<string, unknown>)?.name,
+      status: getStatus(f), goals: f.goals,
+    }))))
+
+    for (const fix of finishedFixtures) {
       if (await upsertMatch(supabase, fix, 'finished')) updatedFinished++
     }
 
-    console.log(`sync-scores: live=${updatedLive} finished=${updatedFinished}`)
-    return json({ ok: true, updatedLive, updatedFinished })
+    return json({ ok: true, updatedLive, updatedFinished, apiLive: liveData.response?.length ?? 0, apiFinished: finishedFixtures.length })
   } catch (err) {
     console.error('sync-scores error:', err)
     return json({ error: String(err) }, 500)
