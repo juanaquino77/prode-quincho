@@ -21,6 +21,9 @@ export default function Predictions() {
   const { selectedTournamentId, setSelectedTournamentId } = useTournamentStore()
   const [searchParams] = useSearchParams()
 
+  const [activeStage, setActiveStage] = useState<MatchStage>('group')
+  const [activeGroup, setActiveGroup] = useState<string>('A')
+
   const allTournaments = useMemo<Tournament[]>(() => {
     const list: Tournament[] = []
     if (globalTournament) list.push(globalTournament)
@@ -36,6 +39,13 @@ export default function Predictions() {
     if (urlT) setSelectedTournamentId(urlT)
   }, [searchParams, setSelectedTournamentId])
 
+  const selectedTournament =
+    allTournaments.find((t) => t.id === selectedTournamentId) ?? allTournaments[0] ?? null
+
+  const competitionFilter = selectedTournament?.competition ?? undefined
+  const { data: matches, isLoading } = useMatches(competitionFilter)
+  const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
+
   // If matchId param exists, switch to the correct stage/group once matches load
   useEffect(() => {
     if (!highlightMatchId || !matches) return
@@ -44,13 +54,6 @@ export default function Predictions() {
     setActiveStage(match.stage)
     if (match.stage === 'group' && match.group_name) setActiveGroup(match.group_name)
   }, [highlightMatchId, matches])
-
-  const selectedTournament =
-    allTournaments.find((t) => t.id === selectedTournamentId) ?? allTournaments[0] ?? null
-
-  const competitionFilter = selectedTournament?.competition ?? undefined
-  const { data: matches, isLoading } = useMatches(competitionFilter)
-  const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
 
   const availableStages = useMemo(() => {
     const stageSet = new Set((matches ?? []).map((m) => m.stage))
@@ -111,9 +114,6 @@ export default function Predictions() {
     })
     return map
   }, [matches, availableStages, phaseLockedStages, selectedTournament?.competition])
-
-  const [activeStage, setActiveStage] = useState<MatchStage>('group')
-  const [activeGroup, setActiveGroup] = useState<string>('A')
 
   const resolvedStage = availableStages.includes(activeStage)
     ? activeStage
