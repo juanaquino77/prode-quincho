@@ -5,7 +5,8 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
-import { useGlobalTournament, useLeaderboard } from '../hooks/useTournaments'
+import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
+import { useTournamentStore } from '../store/tournamentStore'
 import { formatShortDate } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 
@@ -13,8 +14,19 @@ export default function Dashboard() {
   const { user, profile } = useAuthStore()
   const { data: matches } = useMatches()
   const { data: globalTournament } = useGlobalTournament()
+  const { data: myTournaments } = useUserTournaments(user?.id)
+  const { selectedTournamentId } = useTournamentStore()
+
+  // Usa el torneo seleccionado por el usuario; si no hay, cae al global
+  const activeTournamentId = selectedTournamentId
+    ?? myTournaments?.find((t) => t.type === 'friends')?.id
+    ?? globalTournament?.id
+
+  const activeTournament = [...(globalTournament ? [globalTournament] : []), ...(myTournaments ?? [])]
+    .find((t) => t.id === activeTournamentId)
+
   const hasLive = matches?.some((m) => m.status === 'live') ?? false
-  const { data: leaderboard } = useLeaderboard(globalTournament?.id, hasLive)
+  const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
 
   const upcoming = matches?.filter((m) => m.status === 'upcoming').slice(0, 3) ?? []
   const live = matches?.filter((m) => m.status === 'live') ?? []
@@ -83,7 +95,9 @@ export default function Dashboard() {
         {/* Top 3 leaderboard */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-white">🏆 Tabla general</h2>
+            <h2 className="text-lg font-semibold text-white">
+              🏆 {activeTournament?.name ?? 'Tabla general'}
+            </h2>
             <Link to="/tabla" className="text-sm text-union-blue hover:text-union-blue-light flex items-center gap-1">
               Ver completa <ArrowRight size={14} />
             </Link>
