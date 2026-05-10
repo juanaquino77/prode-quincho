@@ -13,6 +13,7 @@ import Admin from './pages/Admin'
 import Profile from './pages/Profile'
 import Bracket from './pages/Bracket'
 import PaymentResult from './pages/PaymentResult'
+import JoinPage from './pages/JoinPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 } },
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/unirse/:inviteCode" element={<JoinPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -44,6 +46,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/unirse/:inviteCode" element={<JoinPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/predicciones" element={<Predictions />} />
       <Route path="/torneos" element={<Tournaments />} />

@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
-  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard, ScrollText,
+  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard, ScrollText, QrCode,
 } from 'lucide-react'
+import QRCode from 'react-qr-code'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -136,6 +137,8 @@ function TournamentCard({ tournament, isGlobal, userId }: {
   const createPayment = useCreatePayment()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const isCreator = !isGlobal
 
@@ -179,6 +182,14 @@ function TournamentCard({ tournament, isGlobal, userId }: {
     navigator.clipboard.writeText(tournament.invite_code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleCopyLink(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!tournament.invite_code) return
+    navigator.clipboard.writeText(`${window.location.origin}/unirse/${tournament.invite_code}`)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
   }
 
   async function handleDelete() {
@@ -285,24 +296,33 @@ function TournamentCard({ tournament, isGlobal, userId }: {
 
           {/* Invite code */}
           {tournament.invite_code && (
-            <button
-              onClick={handleCopy}
-              className="group/code mb-3 w-full bg-union-navy hover:bg-union-navy-light rounded-lg px-3 py-2 flex items-center justify-between gap-2 transition-colors border border-transparent hover:border-union-blue/20"
-              title="Copiar código"
-            >
-              <div className="text-left">
-                <p className="text-[10px] text-white/30 leading-none mb-0.5">Código de invitación</p>
-                <p className="text-sm font-bold tracking-widest text-union-blue">{tournament.invite_code}</p>
-              </div>
-              <div className={cn(
-                'shrink-0 p-1.5 rounded-md transition-all',
-                copied
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-union-blue/10 text-union-blue/50 group-hover/code:bg-union-blue/20 group-hover/code:text-union-blue'
-              )}>
-                {copied ? <Check size={13} /> : <Copy size={13} />}
-              </div>
-            </button>
+            <div className="mb-3 flex items-center gap-1.5">
+              <button
+                onClick={handleCopy}
+                className="group/code flex-1 bg-union-navy hover:bg-union-navy-light rounded-lg px-3 py-2 flex items-center justify-between gap-2 transition-colors border border-transparent hover:border-union-blue/20"
+                title="Copiar código"
+              >
+                <div className="text-left">
+                  <p className="text-[10px] text-white/30 leading-none mb-0.5">Código de invitación</p>
+                  <p className="text-sm font-bold tracking-widest text-union-blue">{tournament.invite_code}</p>
+                </div>
+                <div className={cn(
+                  'shrink-0 p-1.5 rounded-md transition-all',
+                  copied
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-union-blue/10 text-union-blue/50 group-hover/code:bg-union-blue/20 group-hover/code:text-union-blue'
+                )}>
+                  {copied ? <Check size={13} /> : <Copy size={13} />}
+                </div>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setQrOpen(true) }}
+                className="shrink-0 p-2.5 bg-union-navy hover:bg-union-navy-light rounded-lg border border-transparent hover:border-union-blue/20 text-union-blue/50 hover:text-union-blue transition-colors"
+                title="Compartir QR"
+              >
+                <QrCode size={18} />
+              </button>
+            </div>
           )}
 
           {/* CTA — solo si ya pagó */}
@@ -331,6 +351,27 @@ function TournamentCard({ tournament, isGlobal, userId }: {
           )}
         </Card>
       </div>
+
+      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title="Compartir torneo">
+        <div className="text-center">
+          <p className="text-white/50 text-sm mb-4">
+            Compartí este QR o link para que tus amigos se unan a{' '}
+            <span className="text-white font-semibold">{tournament.name}</span>
+          </p>
+          <div className="flex justify-center bg-white p-4 rounded-xl mb-4 mx-auto w-fit">
+            <QRCode value={`${window.location.origin}/unirse/${tournament.invite_code}`} size={200} />
+          </div>
+          <p className="text-xs text-white/30 break-all mb-4">
+            {`${window.location.origin}/unirse/${tournament.invite_code}`}
+          </p>
+          <Button onClick={handleCopyLink} className="w-full">
+            {copiedLink
+              ? <><Check size={14} className="mr-1.5" />Link copiado!</>
+              : <><Copy size={14} className="mr-1.5" />Copiar link</>
+            }
+          </Button>
+        </div>
+      </Modal>
 
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Eliminar torneo">
         <p className="text-white/70 mb-4">

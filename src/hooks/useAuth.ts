@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import type { Profile } from '../types'
+import { PENDING_INVITE_KEY } from '../pages/JoinPage'
 
 export function useAuthInit() {
   const { setUser, setProfile, setLoading } = useAuthStore()
@@ -37,6 +38,30 @@ export function useAuthInit() {
       .single()
     setProfile(data as Profile | null)
     setLoading(false)
+    await handlePendingInvite(userId)
+  }
+
+  async function handlePendingInvite(userId: string) {
+    const code = localStorage.getItem(PENDING_INVITE_KEY)
+    if (!code) return
+    localStorage.removeItem(PENDING_INVITE_KEY)
+
+    const { data: tournament } = await supabase
+      .from('tournaments')
+      .select('id, entry_fee')
+      .eq('invite_code', code.toUpperCase())
+      .single()
+
+    if (!tournament) return
+
+    await supabase.from('tournament_members').insert({
+      tournament_id: tournament.id,
+      user_id: userId,
+      paid: tournament.entry_fee === 0,
+    })
+    // ignore duplicate error — already member is fine
+
+    window.location.href = '/torneos'
   }
 }
 

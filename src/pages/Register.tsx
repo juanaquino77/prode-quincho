@@ -44,7 +44,11 @@ export default function Register() {
   }
 
   async function signInWithGoogle() {
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/dashboard` } })
+    const pendingCode = localStorage.getItem('pendingInviteCode')
+    const redirectTo = pendingCode
+      ? `${window.location.origin}/unirse/${pendingCode}`
+      : `${window.location.origin}/dashboard`
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
   }
 
   return (
