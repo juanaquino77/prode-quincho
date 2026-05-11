@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
 import { useTournamentStore } from '../store/tournamentStore'
-import { formatShortDate } from '../lib/utils'
+import { formatShortDate, resolveMatches } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 
 export default function Dashboard() {
@@ -31,9 +31,11 @@ export default function Dashboard() {
     ...(globalTournament?.competition ? [globalTournament.competition] : []),
     ...(myTournaments ?? []).map((t) => t.competition).filter(Boolean) as string[],
   ])
-  const matches = userCompetitions.size > 0
-    ? (allMatches ?? []).filter((m) => userCompetitions.has(m.competition))
-    : (allMatches ?? [])
+  const matches = resolveMatches(
+    userCompetitions.size > 0
+      ? (allMatches ?? []).filter((m) => userCompetitions.has(m.competition))
+      : (allMatches ?? [])
+  )
 
   const hasLive = matches.some((m) => m.status === 'live')
   const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
