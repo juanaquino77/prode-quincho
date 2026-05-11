@@ -82,6 +82,31 @@ export function getStageName(stage: string): string {
   return map[stage] ?? stage
 }
 
+/** Resuelve placeholders "Gan. X o Y" usando los ganadores reales de partidos terminados */
+export function resolveTeamName(name: string, allMatches: Match[]): string {
+  const m = name.match(/^Gan\.\s+(.+?)\s+o\s+(.+)$/)
+  if (!m) return name
+  const [, partA, partB] = m
+  const feeder = allMatches.find(
+    (pm) =>
+      pm.home_score !== null &&
+      pm.away_score !== null &&
+      (pm.home_team.includes(partA) || pm.away_team.includes(partA)) &&
+      (pm.home_team.includes(partB) || pm.away_team.includes(partB))
+  )
+  if (!feeder) return name
+  const homeWins = feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
+  return homeWins ? feeder.home_team : feeder.away_team
+}
+
+export function resolveMatches(matches: Match[]): Match[] {
+  return matches.map((m) => ({
+    ...m,
+    home_team: resolveTeamName(m.home_team, matches),
+    away_team: resolveTeamName(m.away_team, matches),
+  }))
+}
+
 export function generateInviteCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }

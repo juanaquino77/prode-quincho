@@ -6,7 +6,7 @@ import { usePredictions } from '../hooks/usePredictions'
 import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName } from '../lib/utils'
+import { getStageName, resolveMatches } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 import type { Match, MatchStage, Prediction, Tournament } from '../types'
 
@@ -14,45 +14,18 @@ const KNOCKOUT_STAGES: MatchStage[] = [
   'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
 ]
 
-// Resuelve placeholders "Gan. X o Y" usando los ganadores reales de partidos terminados
-function resolveTeamName(name: string, allMatches: Match[]): string {
-  const m = name.match(/^Gan\.\s+(.+?)\s+o\s+(.+)$/)
-  if (!m) return name
-  const [, partA, partB] = m
-  const feeder = allMatches.find(
-    (pm) =>
-      pm.home_score !== null &&
-      pm.away_score !== null &&
-      (pm.home_team.includes(partA) || pm.away_team.includes(partA)) &&
-      (pm.home_team.includes(partB) || pm.away_team.includes(partB))
-  )
-  if (!feeder) return name
-  const homeWins =
-    feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
-  return homeWins ? feeder.home_team : feeder.away_team
-}
-
-function resolveMatches(matches: Match[]): Match[] {
-  return matches.map((m) => ({
-    ...m,
-    home_team: resolveTeamName(m.home_team, matches),
-    away_team: resolveTeamName(m.away_team, matches),
-  }))
-}
+// Altura fija por fila del grid (px). Debe ser >= altura de una BracketMatch card.
+const ROW_H = 112
 
 // ─── Single team row inside a bracket card ───────────────────
 function TeamRow({
-  name,
-  score,
-  predScore,
-  isPredWinner,
-  isActualWinner,
+  name, score, predScore, isPredWinner, isActualWinner,
 }: {
   name: string
   score: number | null
   predScore: number | null
-  isPredWinner: boolean    // user predicted this team wins
-  isActualWinner: boolean  // this team actually won
+  isPredWinner: boolean
+  isActualWinner: boolean
 }) {
   const hasPred = predScore !== null
   const finished = score !== null
@@ -63,35 +36,25 @@ function TeamRow({
         ? 'bg-union-blue/20 border border-union-blue/40'
         : 'bg-union-navy-light border border-transparent'
     }`}>
-      {/* Club flag */}
       <div className="flex-shrink-0">
         <ClubFlag teamName={name} size={22} />
       </div>
-
-      {/* Name */}
       <span className={`text-xs font-semibold flex-1 truncate ${
         finished && isActualWinner ? 'text-white' : 'text-white/70'
       }`}>
         {name}
       </span>
-
-      {/* Predicted winner chevron */}
       {hasPred && isPredWinner && (
-        <span
-          className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-            finished
-              ? isActualWinner
-                ? 'bg-green-500/20 text-green-400'   // predicted correctly ✓
-                : 'bg-red-500/15 text-red-400'        // predicted wrong ✗
-              : 'bg-yellow-500/15 text-yellow-400'    // pending prediction ★
-          }`}
-          title="Tu pronóstico de clasificado"
-        >
+        <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
+          finished
+            ? isActualWinner
+              ? 'bg-green-500/20 text-green-400'
+              : 'bg-red-500/15 text-red-400'
+            : 'bg-yellow-500/15 text-yellow-400'
+        }`} title="Tu pronóstico de clasificado">
           {finished ? (isActualWinner ? '✓' : '✗') : '★'}
         </span>
       )}
-
-      {/* Scores: actual | pred */}
       <div className="flex items-center gap-1.5 ml-1 shrink-0">
         {finished && (
           <span className={`text-sm font-bold ${isActualWinner ? 'text-white' : 'text-white/50'}`}>
@@ -99,9 +62,7 @@ function TeamRow({
           </span>
         )}
         {hasPred && (
-          <span className="text-[11px] text-white/35 tabular-nums">
-            ({predScore})
-          </span>
+          <span className="text-[11px] text-white/35 tabular-nums">({predScore})</span>
         )}
       </div>
     </div>
@@ -118,20 +79,18 @@ function BracketMatch({ match, prediction, tournamentId }: {
   const finished = match.home_score !== null && match.away_score !== null
 
   const homeWins = finished && (
-    match.penalty_winner === 'home' || (match.home_score! > match.away_score!)
+    match.penalty_winner === 'home' || match.home_score! > match.away_score!
   )
   const awayWins = finished && (
-    match.penalty_winner === 'away' || (match.away_score! > match.home_score!)
+    match.penalty_winner === 'away' || match.away_score! > match.home_score!
   )
 
-  // Who did the user predict wins?
   const predHomeScore = prediction?.home_score_pred ?? null
   const predAwayScore = prediction?.away_score_pred ?? null
   const predPenalty   = prediction?.penalty_pred ?? null
 
   let isPredHomeWinner = false
   let isPredAwayWinner = false
-
   if (predHomeScore !== null && predAwayScore !== null) {
     if (predHomeScore > predAwayScore) isPredHomeWinner = true
     else if (predAwayScore > predHomeScore) isPredAwayWinner = true
@@ -139,15 +98,19 @@ function BracketMatch({ match, prediction, tournamentId }: {
     else if (predPenalty === 'away') isPredAwayWinner = true
   }
 
+  // Navegable si los equipos ya son conocidos (no siguen siendo placeholders)
+  const teamsResolved = !match.home_team.startsWith('Gan.') && !match.away_team.startsWith('Gan.')
+  const isNavigable = !!tournamentId && teamsResolved
+
   function handleClick() {
-    if (!finished || !tournamentId) return
+    if (!isNavigable) return
     navigate(`/predicciones?t=${tournamentId}&matchId=${match.id}`)
   }
 
   return (
     <div
-      className={`bg-union-navy border border-union-blue/15 rounded-xl overflow-hidden min-w-[195px] max-w-[230px] transition-colors ${
-        finished && tournamentId ? 'cursor-pointer hover:border-union-blue/50 hover:bg-union-navy-light/50' : ''
+      className={`bg-union-navy border border-union-blue/15 rounded-xl overflow-hidden w-[210px] transition-colors ${
+        isNavigable ? 'cursor-pointer hover:border-union-blue/50 hover:bg-union-navy-light/50' : 'opacity-60'
       }`}
       onClick={handleClick}
     >
@@ -158,48 +121,15 @@ function BracketMatch({ match, prediction, tournamentId }: {
         )}
       </div>
       <div className="p-1.5 space-y-1">
-        <TeamRow
-          name={match.home_team}
-          score={match.home_score}
-          predScore={predHomeScore}
-          isPredWinner={isPredHomeWinner}
-          isActualWinner={homeWins}
-        />
-        <TeamRow
-          name={match.away_team}
-          score={match.away_score}
-          predScore={predAwayScore}
-          isPredWinner={isPredAwayWinner}
-          isActualWinner={awayWins}
-        />
+        <TeamRow name={match.home_team} score={match.home_score} predScore={predHomeScore} isPredWinner={isPredHomeWinner} isActualWinner={homeWins} />
+        <TeamRow name={match.away_team} score={match.away_score} predScore={predAwayScore} isPredWinner={isPredAwayWinner} isActualWinner={awayWins} />
       </div>
-      {!finished && (
+      {!finished && teamsResolved && (
         <div className="px-3 pb-2 text-[10px] text-white/25 text-center">Próximo</div>
       )}
-    </div>
-  )
-}
-
-// ─── Column for one stage ─────────────────────────────────────
-function BracketStage({
-  stage, matches, predMap, tournamentId,
-}: {
-  stage: MatchStage
-  matches: Match[]
-  predMap: Map<string, Prediction>
-  tournamentId?: string
-}) {
-  if (matches.length === 0) return null
-  return (
-    <div className="flex flex-col items-center gap-2 min-w-[210px]">
-      <h3 className="text-xs font-bold text-union-blue uppercase tracking-wider mb-1">
-        {getStageName(stage)}
-      </h3>
-      <div className="flex flex-col gap-4">
-        {matches.map((m) => (
-          <BracketMatch key={m.id} match={m} prediction={predMap.get(m.id)} tournamentId={tournamentId} />
-        ))}
-      </div>
+      {!teamsResolved && (
+        <div className="px-3 pb-2 text-[10px] text-white/20 text-center">Por definir</div>
+      )}
     </div>
   )
 }
@@ -219,7 +149,6 @@ export default function Bracket() {
     return [...list, ...friends]
   }, [globalTournament, myTournaments])
 
-  // URL param ?t= takes priority on first load
   useEffect(() => {
     const urlT = searchParams.get('t')
     if (urlT) setSelectedTournamentId(urlT)
@@ -230,7 +159,6 @@ export default function Bracket() {
   const { data: allMatches, isLoading } = useMatches(selectedTournament?.competition ?? undefined)
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
 
-  // Map match_id → prediction for fast lookup
   const predMap = useMemo(
     () => new Map((predictions ?? []).map((p) => [p.match_id, p])),
     [predictions]
@@ -246,7 +174,11 @@ export default function Bracket() {
     return byStage
   }, [allMatches])
 
-  const hasKnockout = Object.keys(knockoutMatches).length > 0
+  const activeStages = KNOCKOUT_STAGES.filter((s) => knockoutMatches[s])
+  const baseCount = activeStages.length > 0
+    ? Math.max(...activeStages.map((s) => knockoutMatches[s]!.length))
+    : 1
+  const hasKnockout = activeStages.length > 0
 
   return (
     <Layout>
@@ -292,14 +224,61 @@ export default function Bracket() {
         </div>
       ) : (
         <div className="overflow-x-auto pb-4">
-          <div className="flex gap-6 items-start min-w-max px-2 py-2">
-            {KNOCKOUT_STAGES.map((stage) => {
-              const matches = knockoutMatches[stage]
-              if (!matches) return null
-              return (
-                <BracketStage key={stage} stage={stage} matches={matches} predMap={predMap} tournamentId={selectedTournament?.id} />
-              )
-            })}
+          <div className="px-2" style={{ minWidth: 'max-content' }}>
+
+            {/* Stage headers */}
+            <div
+              className="mb-3"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: activeStages.map(() => '210px').join(' '),
+                columnGap: '24px',
+              }}
+            >
+              {activeStages.map((stage) => (
+                <h3 key={stage} className="text-xs font-bold text-union-blue uppercase tracking-wider text-center">
+                  {getStageName(stage)}
+                </h3>
+              ))}
+            </div>
+
+            {/* Bracket grid — cada match se centra verticalmente en su slot */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: activeStages.map(() => '210px').join(' '),
+                gridTemplateRows: `repeat(${baseCount}, ${ROW_H}px)`,
+                columnGap: '24px',
+              }}
+            >
+              {activeStages.map((stage, colIdx) => {
+                const matches = knockoutMatches[stage]!
+                const rowSpan = Math.max(1, Math.round(baseCount / matches.length))
+                return matches.map((match, matchIdx) => {
+                  const rowStart = matchIdx * rowSpan + 1
+                  const rowEnd = rowStart + rowSpan
+                  return (
+                    <div
+                      key={match.id}
+                      style={{
+                        gridColumn: colIdx + 1,
+                        gridRow: `${rowStart} / ${rowEnd}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <BracketMatch
+                        match={match}
+                        prediction={predMap.get(match.id)}
+                        tournamentId={selectedTournament?.id}
+                      />
+                    </div>
+                  )
+                })
+              })}
+            </div>
+
           </div>
         </div>
       )}

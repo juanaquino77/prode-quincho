@@ -8,7 +8,7 @@ import { usePredictions } from '../hooks/usePredictions'
 import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName, cn } from '../lib/utils'
+import { getStageName, cn, resolveMatches } from '../lib/utils'
 import type { Match, MatchStage, Tournament } from '../types'
 
 const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
@@ -134,7 +134,7 @@ export default function Predictions() {
 
   const predMap = new Map(predictions?.map((p) => [p.match_id, p]))
 
-  const filteredMatches = (matches ?? []).filter((m: Match) => {
+  const filteredMatches = resolveMatches(matches ?? []).filter((m: Match) => {
     if (resolvedStage === 'group') return m.stage === 'group' && m.group_name === activeGroup
     return m.stage === resolvedStage
   })
