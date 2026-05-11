@@ -2,8 +2,21 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { format, parseISO, isPast } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Match, PenaltyWinner } from '../types'
+import type { Match, MatchStage, PenaltyWinner } from '../types'
 import { KNOCKOUT_STAGES } from '../types'
+
+// Mapeo día en español → getDay() (0=Domingo)
+const DAY_OF_WEEK: Record<string, number> = {
+  Lunes: 1, Martes: 2, 'Miércoles': 3, Jueves: 4,
+  Viernes: 5, 'Sábado': 6, Domingo: 0,
+}
+
+// Abreviatura usada en el DB → stage enum
+const STAGE_ABBREV: Record<string, MatchStage> = {
+  O:  'round_of_16',
+  CF: 'quarterfinal',
+  SF: 'semifinal',
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -82,21 +95,69 @@ export function getStageName(stage: string): string {
   return map[stage] ?? stage
 }
 
-/** Resuelve placeholders "Gan. X o Y" usando los ganadores reales de partidos terminados */
+/**
+ * Resuelve dos formatos de placeholder de equipo:
+ *
+ * Formato 1 — "Gan. X o Y"
+ *   Busca el partido terminado donde jugaron X e Y y devuelve al ganador.
+ *
+ * Formato 2 — "Gan. CF Martes 1" / "Gan. SF Jueves 2" etc.
+ *   Busca el N-ésimo partido de esa etapa en ese día de la semana.
+ *   - Si terminó → devuelve al ganador.
+ *   - Si no terminó → resuelve recursivamente ambos equipos del partido
+ *     y devuelve "EquipoA o EquipoB" siempre que ambos sean concretos
+ *     (no sean a su vez opciones compuestas).
+ */
 export function resolveTeamName(name: string, allMatches: Match[]): string {
-  const m = name.match(/^Gan\.\s+(.+?)\s+o\s+(.+)$/)
-  if (!m) return name
-  const [, partA, partB] = m
-  const feeder = allMatches.find(
-    (pm) =>
-      pm.home_score !== null &&
-      pm.away_score !== null &&
-      (pm.home_team.includes(partA) || pm.away_team.includes(partA)) &&
-      (pm.home_team.includes(partB) || pm.away_team.includes(partB))
-  )
-  if (!feeder) return name
-  const homeWins = feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
-  return homeWins ? feeder.home_team : feeder.away_team
+  // ── Formato 2: "Gan. ABBREV DíaSemana N" ──────────────────────────────────
+  const m2 = name.match(/^Gan\.\s+([A-Z]+)\s+(\S+)\s+(\d+)$/)
+  if (m2) {
+    const [, abbrev, dayStr, idxStr] = m2
+    const stage = STAGE_ABBREV[abbrev]
+    const dayNum = DAY_OF_WEEK[dayStr]
+    if (stage === undefined || dayNum === undefined) return name
+
+    const idx = parseInt(idxStr) - 1
+    const stageMatches = allMatches
+      .filter((pm) => pm.stage === stage && new Date(pm.match_date).getDay() === dayNum)
+      .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+
+    const feeder = stageMatches[idx]
+    if (!feeder) return name
+
+    // Partido terminado → devolver ganador
+    if (feeder.home_score !== null && feeder.away_score !== null) {
+      const homeWins = feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
+      return homeWins ? feeder.home_team : feeder.away_team
+    }
+
+    // Partido no terminado → resolver ambos equipos y mostrar opciones
+    const rHome = resolveTeamName(feeder.home_team, allMatches)
+    const rAway = resolveTeamName(feeder.away_team, allMatches)
+    // Solo mostrar "X o Y" si ambos son nombres concretos (sin " o " anidados)
+    if (!rHome.includes(' o ') && !rAway.includes(' o ')) {
+      return `${rHome} o ${rAway}`
+    }
+    return name
+  }
+
+  // ── Formato 1: "Gan. X o Y" ───────────────────────────────────────────────
+  const m1 = name.match(/^Gan\.\s+(.+?)\s+o\s+(.+)$/)
+  if (m1) {
+    const [, partA, partB] = m1
+    const feeder = allMatches.find(
+      (pm) =>
+        pm.home_score !== null &&
+        pm.away_score !== null &&
+        (pm.home_team.includes(partA) || pm.away_team.includes(partA)) &&
+        (pm.home_team.includes(partB) || pm.away_team.includes(partB))
+    )
+    if (!feeder) return name
+    const homeWins = feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
+    return homeWins ? feeder.home_team : feeder.away_team
+  }
+
+  return name
 }
 
 export function resolveMatches(matches: Match[]): Match[] {
