@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Trophy, Users } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
@@ -23,6 +23,7 @@ export default function Predictions() {
 
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
+  const hasSyncedStage = useRef(false)
 
   const allTournaments = useMemo<Tournament[]>(() => {
     const list: Tournament[] = []
@@ -46,7 +47,7 @@ export default function Predictions() {
   const { data: matches, isLoading } = useMatches(competitionFilter)
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
 
-  // If matchId param exists, switch to the correct stage/group once matches load
+  // Si viene un matchId por URL, navega a esa etapa
   useEffect(() => {
     if (!highlightMatchId || !matches) return
     const match = matches.find((m) => m.id === highlightMatchId)
@@ -54,6 +55,16 @@ export default function Predictions() {
     setActiveStage(match.stage)
     if (match.stage === 'group' && match.group_name) setActiveGroup(match.group_name)
   }, [highlightMatchId, matches])
+
+  // Al cargar los partidos por primera vez, posicionarse en la etapa activa (live/upcoming)
+  useEffect(() => {
+    if (!matches || highlightMatchId || hasSyncedStage.current) return
+    hasSyncedStage.current = true
+    const currentStage = availableStages.find((stage) =>
+      matches.some((m) => m.stage === stage && (m.status === 'live' || m.status === 'upcoming'))
+    )
+    if (currentStage) setActiveStage(currentStage)
+  }, [matches, availableStages, highlightMatchId])
 
   const availableStages = useMemo(() => {
     const stageSet = new Set((matches ?? []).map((m) => m.stage))
@@ -133,6 +144,7 @@ export default function Predictions() {
     setSelectedTournamentId(t.id)
     setActiveStage('group')
     setActiveGroup('A')
+    hasSyncedStage.current = false
   }
 
   if (!selectedTournament && allTournaments.length === 0) {

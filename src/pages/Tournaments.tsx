@@ -4,7 +4,7 @@ import {
   Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
   ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard, ScrollText, QrCode,
 } from 'lucide-react'
-import QRCode from 'react-qr-code'
+import { QRCode } from 'react-qr-code'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'

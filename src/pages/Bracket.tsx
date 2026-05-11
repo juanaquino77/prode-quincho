@@ -14,6 +14,32 @@ const KNOCKOUT_STAGES: MatchStage[] = [
   'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
 ]
 
+// Resuelve placeholders "Gan. X o Y" usando los ganadores reales de partidos terminados
+function resolveTeamName(name: string, allMatches: Match[]): string {
+  const m = name.match(/^Gan\.\s+(.+?)\s+o\s+(.+)$/)
+  if (!m) return name
+  const [, partA, partB] = m
+  const feeder = allMatches.find(
+    (pm) =>
+      pm.home_score !== null &&
+      pm.away_score !== null &&
+      (pm.home_team.includes(partA) || pm.away_team.includes(partA)) &&
+      (pm.home_team.includes(partB) || pm.away_team.includes(partB))
+  )
+  if (!feeder) return name
+  const homeWins =
+    feeder.penalty_winner === 'home' || feeder.home_score! > feeder.away_score!
+  return homeWins ? feeder.home_team : feeder.away_team
+}
+
+function resolveMatches(matches: Match[]): Match[] {
+  return matches.map((m) => ({
+    ...m,
+    home_team: resolveTeamName(m.home_team, matches),
+    away_team: resolveTeamName(m.away_team, matches),
+  }))
+}
+
 // ─── Single team row inside a bracket card ───────────────────
 function TeamRow({
   name,
@@ -211,7 +237,7 @@ export default function Bracket() {
   )
 
   const knockoutMatches = useMemo(() => {
-    const matches = allMatches ?? []
+    const matches = resolveMatches(allMatches ?? [])
     const byStage: Partial<Record<MatchStage, Match[]>> = {}
     for (const stage of KNOCKOUT_STAGES) {
       const ms = matches.filter((m) => m.stage === stage)
