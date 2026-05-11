@@ -6,7 +6,7 @@ import { usePredictions } from '../hooks/usePredictions'
 import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName, resolveMatches } from '../lib/utils'
+import { getStageName, resolveMatches, formatShortDate } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 import type { Match, MatchStage, Prediction, Tournament } from '../types'
 
@@ -125,7 +125,7 @@ function BracketMatch({ match, prediction, tournamentId }: {
         <TeamRow name={match.away_team} score={match.away_score} predScore={predAwayScore} isPredWinner={isPredAwayWinner} isActualWinner={awayWins} />
       </div>
       {!finished && teamsResolved && (
-        <div className="px-3 pb-2 text-[10px] text-white/25 text-center">Próximo</div>
+        <div className="px-3 pb-2 text-[10px] text-white/25 text-center">{formatShortDate(match.match_date)}</div>
       )}
       {!teamsResolved && (
         <div className="px-3 pb-2 text-[10px] text-white/20 text-center">Por definir</div>
