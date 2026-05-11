@@ -10,9 +10,10 @@ interface LeaderboardTableProps {
   isAdmin?: boolean
   tournamentId?: string
   competition?: string | null
+  showRivalPredictions?: 'before' | 'after'
 }
 
-export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition }: LeaderboardTableProps) {
+export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions }: LeaderboardTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
 
   function handleRowClick(entry: LeaderboardEntry) {
@@ -106,6 +107,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
           tournamentId={tournamentId}
           competition={competition}
           isAdmin={isAdmin}
+          showRivalPredictions={showRivalPredictions}
         />
       )}
     </>

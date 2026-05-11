@@ -87,6 +87,7 @@ export default function Leaderboard() {
           isAdmin={profile?.is_admin ?? false}
           tournamentId={tournamentId}
           competition={selectedTournament?.competition}
+          showRivalPredictions={selectedTournament?.show_rival_predictions}
         />
       )}
     </Layout>

@@ -30,19 +30,33 @@ export function formatShortDate(dateStr: string) {
   return format(parseISO(dateStr), 'd MMM HH:mm', { locale: es })
 }
 
-/** Returns the deadline string for modifying a prediction, e.g. "hasta el 12 may · 13:00 hs" */
-export function formatLockDeadline(matchDateStr: string): string {
-  const kickOff = parseISO(matchDateStr)
-  const lockAt = new Date(kickOff.getTime() - 2 * 60 * 60 * 1000)
+/** Returns the deadline string for modifying a prediction */
+export function formatLockDeadline(lockAt: Date): string {
   return format(lockAt, "d MMM · HH:mm 'hs'", { locale: es })
 }
 
-export function isMatchLocked(match: Match): boolean {
+export function isMatchLocked(match: Match, lockAt?: Date): boolean {
   if (match.status !== 'upcoming') return true
-  // Lock predictions 2 hours before kick-off
-  const kickOff = parseISO(match.match_date)
-  const lockAt = new Date(kickOff.getTime() - 2 * 60 * 60 * 1000)
-  return isPast(lockAt)
+  const deadline = lockAt ?? new Date(parseISO(match.match_date).getTime() - 2 * 60 * 60 * 1000)
+  return isPast(deadline)
+}
+
+/**
+ * Calcula el momento a partir del cual se bloquean los pronósticos
+ * de un partido, basado en el primer partido de su ronda.
+ */
+export function computeRoundLockAt(
+  match: Match,
+  allMatches: Match[],
+  lockHours: number,
+): Date {
+  const sameRound = allMatches.filter(
+    (m) =>
+      m.stage === match.stage &&
+      (match.stage !== 'group' || m.group_name === match.group_name),
+  )
+  const earliest = Math.min(...sameRound.map((m) => parseISO(m.match_date).getTime()))
+  return new Date(earliest - lockHours * 3600_000)
 }
 
 export function calcPoints(

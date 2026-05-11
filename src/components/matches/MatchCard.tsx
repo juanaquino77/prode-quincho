@@ -23,6 +23,7 @@ interface MatchCardProps {
   phaseLocked?: boolean
   phaseUnlockAt?: Date
   highlighted?: boolean
+  lockAt?: Date
 }
 
 // ── Countdown ──────────────────────────────────────────────────
@@ -52,8 +53,8 @@ function Countdown({ unlockAt }: { unlockAt: Date }) {
   )
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted }: MatchCardProps) {
-  const locked = isMatchLocked(match)
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt }: MatchCardProps) {
+  const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -361,9 +362,9 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
         </div>
 
         {/* Deadline / locked hint */}
-        {!locked && !phaseLocked && (
+        {!locked && !phaseLocked && lockAt && (
           <p className="text-[10px] text-white/25 text-right">
-            Modificable hasta el {formatLockDeadline(match.match_date)}
+            Modificable hasta el {formatLockDeadline(lockAt)}
           </p>
         )}
         {locked && prediction && (

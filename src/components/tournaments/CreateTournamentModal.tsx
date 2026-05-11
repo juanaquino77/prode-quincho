@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Copy, Check, Trophy, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, Check, Trophy, Clock, Eye, EyeOff, Star } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { useCreateTournament } from '../../hooks/useTournaments'
-import type { Tournament } from '../../types'
+import { useTournamentTypesPublic } from '../../hooks/useTournamentTypes'
+import type { Tournament, TournamentTypePublic } from '../../types'
 
 const COMPETITIONS = [
   { value: 'apertura_2026', label: '🇦🇷 Apertura 2026' },
@@ -19,11 +20,7 @@ const schema = z.object({
   name: z.string().min(3, 'Mínimo 3 caracteres').max(50),
   competition: z.string().min(1),
   entry_fee: z.coerce.number().min(0, 'Debe ser mayor o igual a 0'),
-  club_fee_percentage: z.coerce.number().min(0).max(100),
-  pts_exact: z.coerce.number().min(0).max(20),
-  pts_outcome: z.coerce.number().min(0).max(20),
-  pts_penalty_correct: z.coerce.number().min(0).max(10),
-  pts_penalty_wrong_deduct: z.coerce.number().min(0).max(10),
+  tournament_type_id: z.string().uuid('Seleccioná un tipo de torneo'),
 })
 type FormData = z.infer<typeof schema>
 
@@ -34,37 +31,24 @@ interface Props {
 }
 
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: {
-      entry_fee: 0,
-      club_fee_percentage: 10,
-      competition: 'apertura_2026',
-      pts_exact: 3,
-      pts_outcome: 1,
-      pts_penalty_correct: 1,
-      pts_penalty_wrong_deduct: 1,
-    },
+    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '' },
   })
   const createTournament = useCreateTournament()
+  const { data: types = [], isLoading: typesLoading } = useTournamentTypesPublic()
   const [created, setCreated] = useState<Tournament | null>(null)
   const [copied, setCopied] = useState(false)
-  const [showRules, setShowRules] = useState(true)
+  const selectedTypeId = watch('tournament_type_id')
 
   async function onSubmit(data: FormData) {
-    const { pts_exact, pts_outcome, pts_penalty_correct, pts_penalty_wrong_deduct, ...rest } = data
-    const t = await createTournament.mutateAsync({
-      ...rest,
-      created_by: userId,
-      rules: { pts_exact, pts_outcome, pts_penalty_correct, pts_penalty_wrong_deduct },
-    })
+    const t = await createTournament.mutateAsync({ ...data, created_by: userId })
     setCreated(t)
   }
 
   function handleClose() {
     setCreated(null)
     reset()
-    setShowRules(false)
     onClose()
   }
 
@@ -80,7 +64,12 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
     <Modal open={open} onClose={handleClose} title="Crear torneo de amigos">
       {!created ? (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input label="Nombre del torneo" placeholder="Ej: Quincho de Juan" error={errors.name?.message} {...register('name')} />
+          <Input
+            label="Nombre del torneo"
+            placeholder="Ej: Quincho de Juan"
+            error={errors.name?.message}
+            {...register('name')}
+          />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-union-blue-light">Competencia</label>
             <select
@@ -92,52 +81,36 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
               ))}
             </select>
           </div>
-          <Input label="Inscripción (ARS)" type="number" min="0" placeholder="0 = gratuito" error={errors.entry_fee?.message} {...register('entry_fee')} />
-          <Input label="% para el club" type="number" min="0" max="100" placeholder="10" error={errors.club_fee_percentage?.message} {...register('club_fee_percentage')} />
-          <p className="text-xs text-white/40">El resto del pozo va al ganador del torneo.</p>
+          <Input
+            label="Inscripción (ARS)"
+            type="number"
+            min="0"
+            placeholder="0 = gratuito"
+            error={errors.entry_fee?.message}
+            {...register('entry_fee')}
+          />
 
-          {/* Reglas de puntuación */}
-          <div className="border border-union-blue/20 rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowRules((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-union-blue-light hover:bg-union-blue/5 transition-colors"
-            >
-              <span>Reglas de puntuación</span>
-              {showRules ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </button>
-            {showRules && (
-              <div className="px-4 pb-4 space-y-3 border-t border-union-blue/10 pt-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Marcador exacto (pts)"
-                    type="number" min="0" max="20"
-                    error={errors.pts_exact?.message}
-                    {...register('pts_exact')}
+          {/* Selector de tipo de torneo */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-union-blue-light">Tipo de torneo</label>
+            {typesLoading ? (
+              <p className="text-sm text-white/40">Cargando tipos...</p>
+            ) : types.length === 0 ? (
+              <p className="text-sm text-white/40">No hay tipos disponibles</p>
+            ) : (
+              <div className="space-y-2">
+                {types.map((type) => (
+                  <TournamentTypeCard
+                    key={type.id}
+                    type={type}
+                    selected={selectedTypeId === type.id}
+                    onSelect={() => setValue('tournament_type_id', type.id)}
                   />
-                  <Input
-                    label="Resultado correcto (pts)"
-                    type="number" min="0" max="20"
-                    error={errors.pts_outcome?.message}
-                    {...register('pts_outcome')}
-                  />
-                </div>
-                <p className="text-[11px] text-white/30">Penales (solo empates en eliminatorias)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Penales acertados (+pts)"
-                    type="number" min="0" max="10"
-                    error={errors.pts_penalty_correct?.message}
-                    {...register('pts_penalty_correct')}
-                  />
-                  <Input
-                    label="Penales errados en exacto (-pts)"
-                    type="number" min="0" max="10"
-                    error={errors.pts_penalty_wrong_deduct?.message}
-                    {...register('pts_penalty_wrong_deduct')}
-                  />
-                </div>
+                ))}
               </div>
+            )}
+            {errors.tournament_type_id && (
+              <p className="text-xs text-red-400">{errors.tournament_type_id.message}</p>
             )}
           </div>
 
@@ -168,5 +141,50 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
         </div>
       )}
     </Modal>
+  )
+}
+
+function TournamentTypeCard({
+  type,
+  selected,
+  onSelect,
+}: {
+  type: TournamentTypePublic
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
+        selected
+          ? 'border-union-blue bg-union-blue/10'
+          : 'border-union-blue/20 bg-union-navy-light hover:border-union-blue/40'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-semibold text-white text-sm">{type.name}</span>
+        {selected && <Check size={15} className="text-union-blue" />}
+      </div>
+      {type.description && (
+        <p className="text-xs text-white/50 mb-2">{type.description}</p>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/40">
+        <span className="flex items-center gap-1">
+          <Star size={11} />
+          {type.pts_exact}pts exacto · {type.pts_outcome}pt resultado
+        </span>
+        <span className="flex items-center gap-1">
+          <Clock size={11} />
+          Cierra {type.prediction_lock_hours}h antes
+        </span>
+        <span className="flex items-center gap-1">
+          {type.show_rival_predictions === 'before'
+            ? <><Eye size={11} />Ve pronósticos antes</>
+            : <><EyeOff size={11} />Pronósticos ocultos</>}
+        </span>
+      </div>
+    </button>
   )
 }

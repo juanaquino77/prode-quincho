@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -10,11 +10,12 @@ import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { useMatches, useUpsertMatch, useDeleteMatch } from '../hooks/useMatches'
+import { useAdminTournamentTypes, useUpsertTournamentType, useToggleTournamentTypeActive } from '../hooks/useTournamentTypes'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { formatShortDate, getStageName, resolveMatches } from '../lib/utils'
 import { cn } from '../lib/utils'
-import type { Match, MatchStage } from '../types'
+import type { Match, MatchStage, TournamentTypeAdmin } from '../types'
 
 // ─── Types ────────────────────────────────────────────────────
 interface AdminUser {
@@ -73,7 +74,7 @@ const matchSchema = z.object({
 type MatchFormData = z.infer<typeof matchSchema>
 
 // ─── Admin page ───────────────────────────────────────────────
-type Tab = 'results' | 'matches' | 'users'
+type Tab = 'results' | 'matches' | 'users' | 'types'
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<Tab>('results')
@@ -82,21 +83,22 @@ export default function Admin() {
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
-        <p className="text-white/50 text-sm mt-0.5">Gestión de partidos y usuarios</p>
+        <p className="text-white/50 text-sm mt-0.5">Gestión de partidos, usuarios y tipos de torneo</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0">
+      <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0 overflow-x-auto">
         {([
           { id: 'results', label: 'Resultados', icon: ClipboardList },
           { id: 'matches', label: 'Partidos',   icon: Calendar },
           { id: 'users',   label: 'Usuarios',   icon: Users },
+          { id: 'types',   label: 'Tipos',      icon: Layers },
         ] as { id: Tab; label: string; icon: typeof Calendar }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             className={cn(
-              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors',
+              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors shrink-0',
               activeTab === id
                 ? 'border-union-blue text-union-blue'
                 : 'border-transparent text-white/50 hover:text-white'
@@ -111,6 +113,7 @@ export default function Admin() {
       {activeTab === 'results' && <ResultsTab />}
       {activeTab === 'matches' && <MatchesTab />}
       {activeTab === 'users'   && <UsersTab />}
+      {activeTab === 'types'   && <TournamentTypesTab />}
     </Layout>
   )
 }
@@ -538,6 +541,207 @@ function MatchFormModal({ match, onClose, onSave, loading }: {
             <X size={15} className="mr-1" />Cancelar
           </Button>
         </div>
+      </form>
+    </Modal>
+  )
+}
+
+// ─── Tournament Types Tab ─────────────────────────────────────
+const tournamentTypeSchema = z.object({
+  name: z.string().min(1, 'Requerido').max(50),
+  description: z.string().optional(),
+  pts_exact: z.coerce.number().min(0).max(20),
+  pts_outcome: z.coerce.number().min(0).max(20),
+  pts_penalty_correct: z.coerce.number().min(0).max(10),
+  pts_penalty_wrong_deduct: z.coerce.number().min(0).max(10),
+  prediction_lock_hours: z.coerce.number().min(0).max(168),
+  show_rival_predictions: z.enum(['before', 'after']),
+  club_fee_percentage: z.coerce.number().min(0).max(100),
+  is_active: z.boolean(),
+})
+type TournamentTypeFormData = z.infer<typeof tournamentTypeSchema>
+
+function TournamentTypesTab() {
+  const { data: types = [], isLoading } = useAdminTournamentTypes()
+  const [editTarget, setEditTarget] = useState<TournamentTypeAdmin | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  if (isLoading) return <p className="text-white/40">Cargando...</p>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus size={15} className="mr-1" />Nuevo tipo
+        </Button>
+      </div>
+
+      {types.length === 0 ? (
+        <Card>
+          <p className="text-white/40 text-sm text-center py-4">No hay tipos de torneo creados aún.</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {types.map((t) => (
+            <TypeRow key={t.id} type={t} onEdit={() => setEditTarget(t)} />
+          ))}
+        </div>
+      )}
+
+      {(createOpen || editTarget) && (
+        <TournamentTypeModal
+          type={editTarget}
+          onClose={() => { setCreateOpen(false); setEditTarget(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function TypeRow({ type, onEdit }: { type: TournamentTypeAdmin; onEdit: () => void }) {
+  const toggle = useToggleTournamentTypeActive()
+
+  return (
+    <Card className={cn('space-y-2', !type.is_active && 'opacity-50')}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-white">{type.name}</p>
+            <Badge variant={type.is_active ? 'green' : 'gray'}>
+              {type.is_active ? 'Activo' : 'Inactivo'}
+            </Badge>
+          </div>
+          {type.description && (
+            <p className="text-xs text-white/40 mt-0.5">{type.description}</p>
+          )}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="secondary" onClick={onEdit} className="px-2.5 py-1.5">
+            <Edit2 size={13} />
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => toggle.mutate({ id: type.id, is_active: !type.is_active })}
+            className="px-2.5 py-1.5"
+          >
+            {type.is_active ? <EyeOff size={13} /> : <Eye size={13} />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-white/50">
+        <span>Exacto: <span className="text-white">{type.pts_exact}pts</span></span>
+        <span>Resultado: <span className="text-white">{type.pts_outcome}pt</span></span>
+        <span>Penal acierto: <span className="text-white">+{type.pts_penalty_correct}pt</span></span>
+        <span>Penal error: <span className="text-white">−{type.pts_penalty_wrong_deduct}pt</span></span>
+        <span>Cierre: <span className="text-white">{type.prediction_lock_hours}h antes</span></span>
+        <span>Ver rivales: <span className="text-white">{type.show_rival_predictions === 'before' ? 'Antes' : 'Después'}</span></span>
+        <span className="col-span-2">% Club: <span className="text-yellow-400 font-semibold">{type.club_fee_percentage}%</span></span>
+      </div>
+    </Card>
+  )
+}
+
+function TournamentTypeModal({
+  type,
+  onClose,
+}: {
+  type: TournamentTypeAdmin | null
+  onClose: () => void
+}) {
+  const upsert = useUpsertTournamentType()
+  const isEdit = !!type
+
+  const { register, handleSubmit, formState: { errors } } = useForm<TournamentTypeFormData>({
+    resolver: zodResolver(tournamentTypeSchema) as Resolver<TournamentTypeFormData>,
+    defaultValues: type
+      ? {
+          name: type.name,
+          description: type.description ?? '',
+          pts_exact: type.pts_exact,
+          pts_outcome: type.pts_outcome,
+          pts_penalty_correct: type.pts_penalty_correct,
+          pts_penalty_wrong_deduct: type.pts_penalty_wrong_deduct,
+          prediction_lock_hours: type.prediction_lock_hours,
+          show_rival_predictions: type.show_rival_predictions,
+          club_fee_percentage: type.club_fee_percentage,
+          is_active: type.is_active,
+        }
+      : {
+          pts_exact: 3, pts_outcome: 1, pts_penalty_correct: 1, pts_penalty_wrong_deduct: 1,
+          prediction_lock_hours: 2, show_rival_predictions: 'after',
+          club_fee_percentage: 10, is_active: true,
+        },
+  })
+
+  async function onSubmit(data: TournamentTypeFormData) {
+    await upsert.mutateAsync({ ...data, ...(type ? { id: type.id } : {}) })
+    onClose()
+  }
+
+  return (
+    <Modal open onClose={onClose} title={isEdit ? 'Editar tipo de torneo' : 'Nuevo tipo de torneo'}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Input label="Nombre" placeholder="Ej: Normal" error={errors.name?.message} {...register('name')} />
+        <Input label="Descripción (opcional)" placeholder="Breve explicación para los usuarios" {...register('description')} />
+
+        <div className="border border-union-blue/20 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Puntajes</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Exacto (pts)" type="number" min="0" max="20" error={errors.pts_exact?.message} {...register('pts_exact')} />
+            <Input label="Resultado (pts)" type="number" min="0" max="20" error={errors.pts_outcome?.message} {...register('pts_outcome')} />
+            <Input label="Penal acierto (+pts)" type="number" min="0" max="10" error={errors.pts_penalty_correct?.message} {...register('pts_penalty_correct')} />
+            <Input label="Penal error (−pts)" type="number" min="0" max="10" error={errors.pts_penalty_wrong_deduct?.message} {...register('pts_penalty_wrong_deduct')} />
+          </div>
+        </div>
+
+        <div className="border border-union-blue/20 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Configuración</p>
+          <Input
+            label="Cierre de pronósticos (horas antes del primer partido)"
+            type="number" min="0" max="168"
+            error={errors.prediction_lock_hours?.message}
+            {...register('prediction_lock_hours')}
+          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-union-blue-light">Ver pronósticos rivales</label>
+            <select
+              className="bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-union-blue"
+              {...register('show_rival_predictions')}
+            >
+              <option value="after">Solo después del partido</option>
+              <option value="before">Antes del partido</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="border border-yellow-500/30 rounded-xl p-4 space-y-3 bg-yellow-500/5">
+          <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider">Solo admin — no visible para usuarios</p>
+          <Input
+            label="% para el club"
+            type="number" min="0" max="100"
+            error={errors.club_fee_percentage?.message}
+            {...register('club_fee_percentage')}
+          />
+          <p className="text-xs text-white/30">El resto del pozo va al ganador del torneo.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="is_active" {...register('is_active')} className="accent-union-blue w-4 h-4" />
+          <label htmlFor="is_active" className="text-sm text-white/70">Tipo activo (visible para usuarios)</label>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button type="submit" loading={upsert.isPending} className="flex-1">
+            <Save size={15} className="mr-1" />{isEdit ? 'Guardar cambios' : 'Crear tipo'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+            <X size={15} className="mr-1" />Cancelar
+          </Button>
+        </div>
+        {upsert.isError && (
+          <p className="text-sm text-red-400">{String((upsert.error as Error).message)}</p>
+        )}
       </form>
     </Modal>
   )

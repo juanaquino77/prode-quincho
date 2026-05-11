@@ -15,9 +15,10 @@ interface Props {
   tournamentId: string
   competition?: string | null
   isAdmin?: boolean
+  showRivalPredictions?: 'before' | 'after'
 }
 
-export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin }: Props) {
+export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin, showRivalPredictions = 'after' }: Props) {
   const { data: matches } = useMatches(competition ?? undefined)
   const { data: predictions, isLoading } = usePredictions(entry?.user_id, tournamentId)
 
@@ -26,17 +27,19 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
     [predictions],
   )
 
-  // Group matches by stage; non-admins only see locked matches
+  const canSeeAll = isAdmin || showRivalPredictions === 'before'
+
+  // Group matches by stage; visibility depends on tournament configuration
   const byStage = useMemo(() => {
     const map = new Map<string, typeof matches>()
     const resolved = resolveMatches(matches ?? [])
     for (const stage of STAGE_ORDER) {
       let ms = resolved.filter((m) => m.stage === stage)
-      if (!isAdmin) ms = ms.filter(isMatchLocked)
+      if (!canSeeAll) ms = ms.filter(isMatchLocked)
       if (ms.length > 0) map.set(stage, ms)
     }
     return map
-  }, [matches, isAdmin])
+  }, [matches, canSeeAll])
 
   if (!entry) return null
 
@@ -61,7 +64,7 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
         </div>
       </div>
 
-      {!isAdmin && (
+      {!canSeeAll && (
         <p className="text-[11px] text-white/30 mb-3 italic">Solo se muestran pronósticos de partidos ya cerrados</p>
       )}
 

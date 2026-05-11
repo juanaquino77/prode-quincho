@@ -1,17 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Tournament, TournamentRules, LeaderboardEntry, Payment } from '../types'
-import { DEFAULT_RULES } from '../types'
-import { generateInviteCode } from '../lib/utils'
+import type { Tournament, LeaderboardEntry, Payment } from '../types'
 
 export function useTournaments() {
   return useQuery({
     queryKey: ['tournaments'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tournaments')
+        .from('tournaments_public')
         .select('*, tournament_members(count)')
-        .eq('is_active', true)
         .order('created_at', { ascending: false })
       if (error) throw error
       return data.map((t: Tournament & { tournament_members: { count: number }[] }) => ({
@@ -27,23 +24,29 @@ export function useUserTournaments(userId: string | undefined) {
     queryKey: ['user-tournaments', userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Paso 1: obtener IDs de torneos del usuario con paid
+      const { data: members, error: mErr } = await supabase
         .from('tournament_members')
-        .select('paid, tournament:tournaments(*, tournament_members(count))')
+        .select('paid, tournament_id')
         .eq('user_id', userId!)
+      if (mErr) throw mErr
+      if (!members?.length) return []
+
+      const ids = members.map((m) => m.tournament_id as string)
+      const paidMap = Object.fromEntries(members.map((m) => [m.tournament_id, m.paid]))
+
+      // Paso 2: query tournaments_public (sin club_fee_percentage)
+      const { data, error } = await supabase
+        .from('tournaments_public')
+        .select('*, tournament_members(count)')
+        .in('id', ids)
       if (error) throw error
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data as any[])
-        .map((row) => {
-          const t = row.tournament as Tournament & { tournament_members: { count: number }[] }
-          if (!t) return null
-          return {
-            ...t,
-            member_count: t.tournament_members?.[0]?.count ?? 0,
-            user_paid: row.paid as boolean,
-          }
-        })
-        .filter(Boolean) as Tournament[]
+
+      return data.map((t: Tournament & { tournament_members: { count: number }[] }) => ({
+        ...t,
+        member_count: t.tournament_members?.[0]?.count ?? 0,
+        user_paid: paidMap[t.id] as boolean,
+      })) as Tournament[]
     },
   })
 }
@@ -53,10 +56,9 @@ export function useGlobalTournament() {
     queryKey: ['global-tournament'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tournaments')
+        .from('tournaments_public')
         .select('*')
         .eq('type', 'global')
-        .eq('is_active', true)
         .single()
       if (error) return null
       return data as Tournament
@@ -70,24 +72,18 @@ export function useCreateTournament() {
     mutationFn: async (t: {
       name: string
       entry_fee: number
-      club_fee_percentage: number
+      tournament_type_id: string
       created_by: string
-      competition?: string | null
-      rules?: TournamentRules
+      competition: string
     }) => {
-      const invite_code = generateInviteCode()
-      const { data, error } = await supabase
-        .from('tournaments')
-        .insert({ ...t, type: 'friends', invite_code, rules: t.rules ?? DEFAULT_RULES })
-        .select()
-        .single()
-      if (error) throw error
-      // auto-join creator
-      await supabase.from('tournament_members').insert({
-        tournament_id: data.id,
-        user_id: t.created_by,
-        paid: t.entry_fee === 0,
+      const { data, error } = await supabase.rpc('create_tournament', {
+        p_name: t.name,
+        p_entry_fee: t.entry_fee,
+        p_tournament_type_id: t.tournament_type_id,
+        p_competition: t.competition,
+        p_created_by: t.created_by,
       })
+      if (error) throw error
       return data as Tournament
     },
     onSuccess: () => {
@@ -102,7 +98,7 @@ export function useJoinTournament() {
   return useMutation({
     mutationFn: async ({ userId, inviteCode }: { userId: string; inviteCode: string }) => {
       const { data: tournament, error: tErr } = await supabase
-        .from('tournaments')
+        .from('tournaments_public')
         .select('*')
         .eq('invite_code', inviteCode.toUpperCase())
         .single()

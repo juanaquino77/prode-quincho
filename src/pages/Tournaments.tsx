@@ -386,8 +386,7 @@ function TournamentCard({ tournament, isGlobal, userId }: {
       <TournamentRulesModal
         open={rulesOpen}
         onClose={() => setRulesOpen(false)}
-        tournamentName={tournament.name}
-        rules={tournament.rules}
+        tournament={tournament}
       />
     </>
   )

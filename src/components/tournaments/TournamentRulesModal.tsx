@@ -1,20 +1,19 @@
 import { Modal } from '../ui/Modal'
 import { DEFAULT_RULES } from '../../types'
-import type { TournamentRules } from '../../types'
+import type { Tournament, TournamentRules } from '../../types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  tournamentName: string
-  rules?: TournamentRules | null
+  tournament: Pick<Tournament, 'name' | 'rules' | 'prediction_lock_hours' | 'show_rival_predictions'>
 }
 
-export function TournamentRulesModal({ open, onClose, tournamentName, rules }: Props) {
-  const r: TournamentRules = rules ?? DEFAULT_RULES
+export function TournamentRulesModal({ open, onClose, tournament }: Props) {
+  const r: TournamentRules = tournament.rules ?? DEFAULT_RULES
 
   return (
     <Modal open={open} onClose={onClose} title="Reglas de puntuación">
-      <p className="text-xs text-white/40 mb-4">{tournamentName}</p>
+      <p className="text-xs text-white/40 mb-4">{tournament.name}</p>
 
       <div className="space-y-3">
         <RuleRow
@@ -50,6 +49,28 @@ export function TournamentRulesModal({ open, onClose, tournamentName, rules }: P
               description="Errás los penales pero habías acertado el marcador exacto"
             />
           </div>
+        </div>
+
+        <div className="border-t border-union-blue/10 pt-3 mt-3 space-y-3">
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">
+            Configuración del torneo
+          </p>
+          <RuleRow
+            icon="🕐"
+            label="Cierre de pronósticos"
+            value={`${tournament.prediction_lock_hours}h antes`}
+            description="Horas antes del primer partido de cada jornada para cerrar pronósticos"
+          />
+          <RuleRow
+            icon={tournament.show_rival_predictions === 'before' ? '👁️' : '🙈'}
+            label="Ver pronósticos rivales"
+            value={tournament.show_rival_predictions === 'before' ? 'Antes del partido' : 'Solo después'}
+            description={
+              tournament.show_rival_predictions === 'before'
+                ? 'Podés ver los pronósticos de tus rivales antes de que empiece el partido'
+                : 'Los pronósticos de los rivales se revelan cuando el partido termina'
+            }
+          />
         </div>
       </div>
 

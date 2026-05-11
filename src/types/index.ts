@@ -1,7 +1,8 @@
 export type MatchStage = 'group' | 'round_of_32' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'third_place' | 'final'
 export type MatchStatus = 'upcoming' | 'live' | 'finished'
-export type TournamentType = 'global' | 'friends'
+export type TournamentKind = 'global' | 'friends'
 export type PenaltyWinner = 'home' | 'away'
+export type ShowRivalPredictions = 'before' | 'after'
 
 export const KNOCKOUT_STAGES: MatchStage[] = [
   'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
@@ -49,18 +50,38 @@ export const DEFAULT_RULES: TournamentRules = {
   pts_penalty_wrong_deduct: 1,
 }
 
+export interface TournamentTypePublic {
+  id: string
+  name: string
+  description: string | null
+  pts_exact: number
+  pts_outcome: number
+  pts_penalty_correct: number
+  pts_penalty_wrong_deduct: number
+  prediction_lock_hours: number
+  show_rival_predictions: ShowRivalPredictions
+  is_active: boolean
+  created_at: string
+}
+
+export interface TournamentTypeAdmin extends TournamentTypePublic {
+  club_fee_percentage: number
+}
+
 export interface Tournament {
   id: string
   name: string
-  type: TournamentType
+  type: TournamentKind
   invite_code: string | null
   created_by: string | null
   entry_fee: number
   prize_pool: number
-  club_fee_percentage: number
   is_active: boolean
   competition: string | null
   rules: TournamentRules
+  tournament_type_id: string | null
+  prediction_lock_hours: number
+  show_rival_predictions: ShowRivalPredictions
   created_at: string
   member_count?: number
   user_joined?: boolean
