@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal'
 import { ClubFlag } from '../ui/ClubFlag'
 import { useMatches } from '../../hooks/useMatches'
 import { usePredictions } from '../../hooks/usePredictions'
-import { calcPoints, getStageName, isMatchLocked, cn } from '../../lib/utils'
+import { calcPoints, getStageName, isMatchLocked, resolveMatches, cn } from '../../lib/utils'
 import type { LeaderboardEntry } from '../../types'
 import { STAGE_ORDER } from '../../lib/stageOrder'
 
@@ -29,8 +29,9 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
   // Group matches by stage; non-admins only see locked matches
   const byStage = useMemo(() => {
     const map = new Map<string, typeof matches>()
+    const resolved = resolveMatches(matches ?? [])
     for (const stage of STAGE_ORDER) {
-      let ms = (matches ?? []).filter((m) => m.stage === stage)
+      let ms = resolved.filter((m) => m.stage === stage)
       if (!isAdmin) ms = ms.filter(isMatchLocked)
       if (ms.length > 0) map.set(stage, ms)
     }

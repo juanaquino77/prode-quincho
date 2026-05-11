@@ -12,7 +12,7 @@ import { Modal } from '../components/ui/Modal'
 import { useMatches, useUpsertMatch, useDeleteMatch } from '../hooks/useMatches'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { formatShortDate, getStageName } from '../lib/utils'
+import { formatShortDate, getStageName, resolveMatches } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { Match, MatchStage } from '../types'
 
@@ -127,6 +127,9 @@ function ResultsTab() {
     .filter((m) => m.stage !== 'group')
     .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
 
+  // Nombres resueltos solo para display — el save usa el match original para no pisar la BD
+  const resolvedById = new Map(resolveMatches(matches ?? []).map((r) => [r.id, r]))
+
   function getRow(m: Match) {
     return scores[m.id] ?? {
       home: m.home_score?.toString() ?? '',
@@ -192,7 +195,7 @@ function ResultsTab() {
 
             {/* Score row */}
             <div className="flex items-center gap-2">
-              <span className="flex-1 text-sm font-semibold text-white truncate text-right">{m.home_team}</span>
+              <span className="flex-1 text-sm font-semibold text-white truncate text-right">{resolvedById.get(m.id)?.home_team ?? m.home_team}</span>
               <input
                 type="number" min="0" max="20"
                 value={row.home}
@@ -208,7 +211,7 @@ function ResultsTab() {
                 className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
                 placeholder="—"
               />
-              <span className="flex-1 text-sm font-semibold text-white truncate">{m.away_team}</span>
+              <span className="flex-1 text-sm font-semibold text-white truncate">{resolvedById.get(m.id)?.away_team ?? m.away_team}</span>
               <Button size="sm" onClick={() => handleSave(m)} loading={upsert.isPending} className="shrink-0">
                 {saved[m.id] ? '✓' : <Save size={13} />}
               </Button>
@@ -224,8 +227,8 @@ function ResultsTab() {
                   className="flex-1 text-xs bg-union-navy-light border border-yellow-500/30 rounded-lg text-white px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 >
                   <option value="">— Sin definir —</option>
-                  <option value="home">{m.home_team}</option>
-                  <option value="away">{m.away_team}</option>
+                  <option value="home">{resolvedById.get(m.id)?.home_team ?? m.home_team}</option>
+                  <option value="away">{resolvedById.get(m.id)?.away_team ?? m.away_team}</option>
                 </select>
               </div>
             )}
@@ -249,6 +252,7 @@ function MatchesTab() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const filtered = matches?.filter((m) => m.stage === filterStage) ?? []
+  const resolvedById = new Map(resolveMatches(matches ?? []).map((r) => [r.id, r]))
 
   function openNew() {
     setEditMatch({ stage: filterStage as MatchStage, status: 'upcoming', group_name: null })
@@ -284,7 +288,7 @@ function MatchesTab() {
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {match.group_name && <Badge variant="blue">Gr.{match.group_name}</Badge>}
                 <span className="text-sm font-medium text-white truncate">
-                  {match.home_flag} {match.home_team} vs {match.away_team} {match.away_flag}
+                  {match.home_flag} {resolvedById.get(match.id)?.home_team ?? match.home_team} vs {resolvedById.get(match.id)?.away_team ?? match.away_team} {match.away_flag}
                 </span>
                 {match.status === 'finished' && (
                   <span className="text-white/60 text-sm font-bold shrink-0">{match.home_score}-{match.away_score}</span>
