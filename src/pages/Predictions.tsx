@@ -60,11 +60,13 @@ export default function Predictions() {
   useEffect(() => {
     if (!matches || highlightMatchId || hasSyncedStage.current) return
     hasSyncedStage.current = true
-    const currentStage = availableStages.find((stage) =>
+    const stageSet = new Set(matches.map((m) => m.stage))
+    const ordered = STAGE_ORDER.filter((s) => stageSet.has(s))
+    const currentStage = ordered.find((stage) =>
       matches.some((m) => m.stage === stage && (m.status === 'live' || m.status === 'upcoming'))
     )
     if (currentStage) setActiveStage(currentStage)
-  }, [matches, availableStages, highlightMatchId])
+  }, [matches, highlightMatchId])
 
   const availableStages = useMemo(() => {
     const stageSet = new Set((matches ?? []).map((m) => m.stage))
