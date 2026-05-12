@@ -132,7 +132,7 @@ export default function Predictions() {
   const roundLockTimes = useMemo<Map<string, Date>>(() => {
     const map = new Map<string, Date>()
     const allMatches = matches ?? []
-    const lockHours = selectedTournament?.prediction_lock_hours ?? 2
+    const lockHours = selectedTournament?.prediction_lock_hours ?? 0
     for (const m of allMatches) {
       map.set(m.id, computeRoundLockAt(m, allMatches, lockHours))
     }
@@ -284,7 +284,7 @@ export default function Predictions() {
               prediction={predMap.get(match.id)}
               tournamentId={selectedTournament!.id}
               userId={user!.id}
-              phaseLocked={phaseLockedStages.has(match.stage)}
+              phaseLocked={phaseLockedStages.has(match.stage) && (() => { const u = phaseUnlockTimes.get(match.id); return !u || u > new Date() })()}
               phaseUnlockAt={phaseUnlockTimes.get(match.id)}
               lockAt={roundLockTimes.get(match.id)}
               highlighted={match.id === highlightMatchId}
