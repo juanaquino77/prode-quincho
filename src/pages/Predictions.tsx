@@ -8,7 +8,7 @@ import { usePredictions } from '../hooks/usePredictions'
 import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName, cn, resolveMatches, computeRoundLockAt } from '../lib/utils'
+import { getStageName, cn, resolveMatches } from '../lib/utils'
 import type { Match, MatchStage, Tournament } from '../types'
 
 const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
@@ -128,16 +128,14 @@ export default function Predictions() {
     return map
   }, [matches, availableStages, phaseLockedStages, selectedTournament?.competition])
 
-  // Mapa de matchId → momento de cierre basado en prediction_lock_hours del torneo
+  // Mapa de matchId → momento de cierre: horario propio de cada partido
   const roundLockTimes = useMemo<Map<string, Date>>(() => {
     const map = new Map<string, Date>()
-    const allMatches = matches ?? []
-    const lockHours = selectedTournament?.prediction_lock_hours ?? 0
-    for (const m of allMatches) {
-      map.set(m.id, computeRoundLockAt(m, allMatches, lockHours))
+    for (const m of matches ?? []) {
+      map.set(m.id, new Date(m.match_date))
     }
     return map
-  }, [matches, selectedTournament?.prediction_lock_hours])
+  }, [matches])
 
   const resolvedStage = availableStages.includes(activeStage)
     ? activeStage
