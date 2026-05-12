@@ -33,7 +33,7 @@ export function useAdminTournamentTypes() {
 export function useUpsertTournamentType() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (t: Omit<TournamentTypeAdmin, 'created_at'> & { id?: string }) => {
+    mutationFn: async (t: Omit<TournamentTypeAdmin, 'id' | 'created_at'> & { id?: string }) => {
       const { id, ...fields } = t
       if (id) {
         const { data, error } = await supabase
