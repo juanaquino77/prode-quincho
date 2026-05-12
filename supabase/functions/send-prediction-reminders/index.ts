@@ -26,6 +26,44 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
 
+  // Modo force: envía anuncio a todos los miembros de torneos activos
+  const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
+  if (body.force) {
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
+
+    const { data: tournaments } = await supabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('is_active', true)
+
+    let totalSent = 0
+    for (const tournament of tournaments ?? []) {
+      const { data: members } = await supabase
+        .from('tournament_members')
+        .select('user_id')
+        .eq('tournament_id', tournament.id)
+
+      for (const member of members ?? []) {
+        const email = emailMap.get(member.user_id)
+        if (!email) continue
+
+        await fetch(RESEND_API, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Prode Quincho <noreply@prodequincho.com>',
+            to: email,
+            subject: `⚽ ¡Los Cuartos de Final ya están disponibles! – ${tournament.name}`,
+            html: buildAnnouncementHtml(tournament.name),
+          }),
+        })
+        totalSent++
+      }
+    }
+    return json({ ok: true, totalSent })
+  }
+
   // Fetch de todos los emails de una vez para no repetir la llamada
   const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
   const emailMap = new Map<string, string>(
@@ -42,7 +80,7 @@ Deno.serve(async (req) => {
   let totalSent = 0
 
   for (const tournament of tournaments ?? []) {
-    const lockHours = (tournament.prediction_lock_hours as number) ?? 2
+    const lockHours = (tournament.prediction_lock_hours as number) ?? 0
 
     // Ventana: partidos cuyo primer kick-off de la ronda cae en
     // [ahora + lockHours - 15min, ahora + lockHours]
@@ -69,8 +107,6 @@ Deno.serve(async (req) => {
       rounds.get(key)!.push(m.id)
     }
 
-    // Obtener todos los partidos de cada ronda (no solo los de la ventana)
-    // para saber qué partidos hay que pronosticar
     for (const [roundKey, _] of rounds) {
       const [stage, groupName] = roundKey.split(':')
 
@@ -96,14 +132,12 @@ Deno.serve(async (req) => {
       const matchIds = (allRoundMatches ?? []).map((m) => m.id)
       if (!matchIds.length) continue
 
-      // Miembros del torneo
       const { data: members } = await supabase
         .from('tournament_members')
         .select('user_id')
         .eq('tournament_id', tournament.id)
 
       for (const member of members ?? []) {
-        // ¿Ya tiene algún pronóstico en esta ronda?
         const { count } = await supabase
           .from('predictions')
           .select('id', { count: 'exact', head: true })
@@ -113,31 +147,26 @@ Deno.serve(async (req) => {
 
         if ((count ?? 0) > 0) continue
 
-        // Idempotencia: insertar en reminder_logs
         const logKey = `${tournament.id}:${roundKey}`
         const { error: logErr } = await supabase
           .from('reminder_logs')
           .insert({ tournament_id: tournament.id, user_id: member.user_id, round_key: logKey })
 
-        if (logErr) continue // ya se envió (unique constraint)
+        if (logErr) continue
 
         const email = emailMap.get(member.user_id)
         if (!email) continue
 
         const stageName = stageLabel(stage)
-        const hours = lockHours
 
         await fetch(RESEND_API, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from: 'Prode Quincho <noreply@prode-quincho.com>',
+            from: 'Prode Quincho <noreply@prodequincho.com>',
             to: email,
-            subject: `⚽ ¡Faltan ${hours}h para cerrar pronósticos! – ${tournament.name}`,
-            html: buildEmailHtml(tournament.name, stageName, hours),
+            subject: `⚽ ¡Los partidos están por comenzar! – ${tournament.name}`,
+            html: buildEmailHtml(tournament.name, stageName),
           }),
         })
         totalSent++
@@ -161,39 +190,53 @@ function stageLabel(stage: string): string {
   return map[stage] ?? stage
 }
 
-function buildEmailHtml(tournamentName: string, stageName: string, hours: number): string {
+function buildEmailHtml(tournamentName: string, stageName: string): string {
   return `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
   <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
-    <div style="text-align:center;margin-bottom:28px;">
-      <span style="font-size:48px;">⚽</span>
-    </div>
+    <div style="text-align:center;margin-bottom:28px;"><span style="font-size:48px;">⚽</span></div>
     <div style="background:#0d1f3c;border:1px solid rgba(0,168,222,0.2);border-radius:16px;padding:28px;">
-      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">
-        ¡Cerramos pronósticos en ${hours}h!
-      </h1>
-      <p style="margin:0 0 20px;font-size:14px;color:rgba(255,255,255,0.5);">
-        ${stageName} · ${tournamentName}
-      </p>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">¡Los partidos están por comenzar!</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:rgba(255,255,255,0.5);">${stageName} · ${tournamentName}</p>
       <p style="margin:0 0 24px;font-size:15px;color:rgba(255,255,255,0.8);line-height:1.6;">
-        Todavía no cargaste tus pronósticos para esta jornada.
-        Tenés <strong style="color:#00a8de;">${hours} horas</strong> para hacerlo antes de que comiencen los partidos.
+        Todavía no cargaste tus pronósticos para esta jornada. Entrá ahora antes de que empiece el primer partido.
       </p>
       <div style="text-align:center;">
-        <a
-          href="https://prode-quincho.vercel.app/predicciones"
-          style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;"
-        >
+        <a href="https://prodequincho.com/predicciones" style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">
           Cargar pronósticos →
         </a>
       </div>
     </div>
-    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">
-      Prode Quincho · Club Unión
-    </p>
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">Prode Quincho · Club Unión</p>
+  </div>
+</body>
+</html>`
+}
+
+function buildAnnouncementHtml(tournamentName: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+    <div style="text-align:center;margin-bottom:28px;"><span style="font-size:48px;">🏆</span></div>
+    <div style="background:#0d1f3c;border:1px solid rgba(0,168,222,0.2);border-radius:16px;padding:28px;">
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">¡Los Cuartos de Final ya están disponibles!</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:rgba(255,255,255,0.5);">${tournamentName}</p>
+      <p style="margin:0 0 24px;font-size:15px;color:rgba(255,255,255,0.8);line-height:1.6;">
+        Ya podés cargar tus pronósticos para los Cuartos de Final del Apertura 2026. ¡No te quedes afuera!
+      </p>
+      <div style="text-align:center;">
+        <a href="https://prodequincho.com/predicciones" style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;">
+          Cargar pronósticos →
+        </a>
+      </div>
+    </div>
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">Prode Quincho · Club Unión</p>
   </div>
 </body>
 </html>`

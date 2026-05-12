@@ -37,7 +37,7 @@ export function formatLockDeadline(lockAt: Date): string {
 
 export function isMatchLocked(match: Match, lockAt?: Date): boolean {
   if (match.status !== 'upcoming') return true
-  const deadline = lockAt ?? new Date(parseISO(match.match_date).getTime() - 2 * 60 * 60 * 1000)
+  const deadline = lockAt ?? new Date(parseISO(match.match_date).getTime())
   return isPast(deadline)
 }
 
