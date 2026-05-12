@@ -675,7 +675,11 @@ function TournamentTypeModal({
   })
 
   async function onSubmit(data: TournamentTypeFormData) {
-    await upsert.mutateAsync({ ...data, ...(type ? { id: type.id } : {}) })
+    await upsert.mutateAsync({
+      ...data,
+      description: data.description ?? null,
+      ...(type ? { id: type.id } : {}),
+    })
     onClose()
   }
 
