@@ -7,8 +7,9 @@ export function useTournaments() {
     queryKey: ['tournaments'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tournaments_public')
+        .from('tournaments')
         .select('*, tournament_members(count)')
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
       if (error) throw error
       return data.map((t: Tournament & { tournament_members: { count: number }[] }) => ({
@@ -35,9 +36,9 @@ export function useUserTournaments(userId: string | undefined) {
       const ids = members.map((m) => m.tournament_id as string)
       const paidMap = Object.fromEntries(members.map((m) => [m.tournament_id, m.paid]))
 
-      // Paso 2: query tournaments_public (sin club_fee_percentage)
+      // Paso 2: query tournaments (sin club_fee_percentage)
       const { data, error } = await supabase
-        .from('tournaments_public')
+        .from('tournaments')
         .select('*, tournament_members(count)')
         .in('id', ids)
       if (error) throw error
@@ -56,7 +57,7 @@ export function useGlobalTournament() {
     queryKey: ['global-tournament'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tournaments_public')
+        .from('tournaments')
         .select('*')
         .eq('type', 'global')
         .single()
@@ -98,7 +99,7 @@ export function useJoinTournament() {
   return useMutation({
     mutationFn: async ({ userId, inviteCode }: { userId: string; inviteCode: string }) => {
       const { data: tournament, error: tErr } = await supabase
-        .from('tournaments_public')
+        .from('tournaments')
         .select('*')
         .eq('invite_code', inviteCode.toUpperCase())
         .single()
