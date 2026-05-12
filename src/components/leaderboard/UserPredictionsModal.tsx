@@ -35,7 +35,7 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
     const resolved = resolveMatches(matches ?? [])
     for (const stage of STAGE_ORDER) {
       let ms = resolved.filter((m) => m.stage === stage)
-      if (!canSeeAll) ms = ms.filter(isMatchLocked)
+      if (!canSeeAll) ms = ms.filter((m) => isMatchLocked(m))
       if (ms.length > 0) map.set(stage, ms)
     }
     return map
