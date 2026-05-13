@@ -124,6 +124,7 @@ function ResultsTab() {
   const upsert = useUpsertMatch()
   const [scores, setScores] = useState<Record<string, { home: string; away: string; pen: string; status: string }>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   // Show only non-group matches (knockout) not yet finished, sorted by date
   const relevant = (matches ?? [])
@@ -150,6 +151,7 @@ function ResultsTab() {
     const row = getRow(m)
     const home = parseInt(row.home)
     const away = parseInt(row.away)
+    setSavingId(m.id)
     await upsert.mutateAsync({
       ...m,
       home_score: isNaN(home) ? null : home,
@@ -157,6 +159,7 @@ function ResultsTab() {
       penalty_winner: (row.pen || null) as 'home' | 'away' | null,
       status: row.status as Match['status'],
     })
+    setSavingId(null)
     setSaved((prev) => ({ ...prev, [m.id]: true }))
     setTimeout(() => setSaved((prev) => ({ ...prev, [m.id]: false })), 2000)
   }
@@ -215,7 +218,7 @@ function ResultsTab() {
                 placeholder="—"
               />
               <span className="flex-1 text-sm font-semibold text-white truncate">{resolvedById.get(m.id)?.away_team ?? m.away_team}</span>
-              <Button size="sm" onClick={() => handleSave(m)} loading={upsert.isPending} className="shrink-0">
+              <Button size="sm" onClick={() => handleSave(m)} loading={savingId === m.id} className="shrink-0">
                 {saved[m.id] ? '✓' : <Save size={13} />}
               </Button>
             </div>
