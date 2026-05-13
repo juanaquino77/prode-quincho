@@ -282,7 +282,7 @@ export default function Predictions() {
               prediction={predMap.get(match.id)}
               tournamentId={selectedTournament!.id}
               userId={user!.id}
-              phaseLocked={phaseLockedStages.has(match.stage) && (() => { const u = phaseUnlockTimes.get(match.id); return !u || u > new Date() })()}
+              phaseLocked={match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.')}
               phaseUnlockAt={phaseUnlockTimes.get(match.id)}
               lockAt={roundLockTimes.get(match.id)}
               highlighted={match.id === highlightMatchId}
