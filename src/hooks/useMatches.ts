@@ -61,7 +61,13 @@ export function useUpsertMatch() {
       if (error) throw error
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['matches'] }),
+    onSuccess: (updated) => {
+      // Actualiza solo el partido modificado en todos los caches de matches
+      qc.setQueriesData<Match[]>({ queryKey: ['matches'] }, (old) =>
+        old?.map((m) => (m.id === updated.id ? updated : m))
+      )
+      qc.invalidateQueries({ queryKey: ['leaderboard'] })
+    },
   })
 }
 

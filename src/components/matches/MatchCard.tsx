@@ -70,6 +70,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   const [committedPenalty, setCommittedPenalty] = useState<PenaltyWinner | null>(prediction?.penalty_pred ?? null)
   const [saved, setSaved] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [showWarn, setShowWarn] = useState(false)
 
   // Sync inputs when prediction arrives from React Query (async load)
   useEffect(() => {
@@ -114,9 +115,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
     setIsEditing(false)
   }
 
-  async function handleSave() {
-    if (isNaN(hVal) || isNaN(aVal) || hVal < 0 || aVal < 0) return
-    if (penaltyRequired && penaltyPred === null) return
+  async function doSave() {
     await upsert.mutateAsync({
       user_id: userId,
       match_id: match.id,
@@ -129,6 +128,13 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
     setSaved(true)
     setIsEditing(false)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function handleSave() {
+    if (isNaN(hVal) || isNaN(aVal) || hVal < 0 || aVal < 0) return
+    if (penaltyRequired && penaltyPred === null) return
+    if (Math.abs(hVal - aVal) > 5) { setShowWarn(true); return }
+    await doSave()
   }
 
   const statusBadge =
@@ -214,9 +220,9 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
               {/* Score inputs — always visible, disabled when not editing */}
               <div className="flex items-center gap-1.5">
                 <input
-                  type="number" min="0" max="20"
+                  type="number" min="0" max="9"
                   value={home}
-                  onChange={(e) => handleHomeChange(e.target.value)}
+                  onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleHomeChange(v) }}
                   disabled={inputsDisabled}
                   className={cn(
                     'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
@@ -228,9 +234,9 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                 />
                 <span className="text-white/30 text-xs">-</span>
                 <input
-                  type="number" min="0" max="20"
+                  type="number" min="0" max="9"
                   value={away}
-                  onChange={(e) => handleAwayChange(e.target.value)}
+                  onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleAwayChange(v) }}
                   disabled={inputsDisabled}
                   className={cn(
                     'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
@@ -372,6 +378,32 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
         )}
       </div>
     </Card>
+
+    {/* Warning modal: diferencia abultada */}
+    {showWarn && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="bg-union-navy border border-union-blue/20 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <p className="text-white font-bold text-lg mb-2">⚠️ Resultado muy abultado</p>
+          <p className="text-white/60 text-sm mb-5">
+            Estás pronosticando una diferencia de {Math.abs(hVal - aVal)} goles. ¿Seguro que querés guardar igual?
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowWarn(false)}
+              className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white transition-colors"
+            >
+              Corregir
+            </button>
+            <button
+              onClick={() => { setShowWarn(false); doSave() }}
+              className="px-4 py-2 rounded-lg text-sm bg-union-blue text-white font-semibold hover:bg-union-blue/80 transition-colors"
+            >
+              Guardar igual
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   )
 }

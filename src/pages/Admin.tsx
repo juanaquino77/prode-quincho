@@ -142,8 +142,8 @@ function ResultsTab() {
     }
   }
 
-  function setField(id: string, field: string, val: string) {
-    setScores((prev) => ({ ...prev, [id]: { ...getRow({ id } as Match), ...scores[id], [field]: val } }))
+  function setField(m: Match, field: string, val: string) {
+    setScores((prev) => ({ ...prev, [m.id]: { ...getRow(m), [field]: val } }))
   }
 
   async function handleSave(m: Match) {
@@ -187,7 +187,7 @@ function ResultsTab() {
               </div>
               <select
                 value={row.status}
-                onChange={(e) => setField(m.id, 'status', e.target.value)}
+                onChange={(e) => setField(m, 'status', e.target.value)}
                 className="text-xs bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-union-blue"
               >
                 <option value="upcoming">Próximo</option>
@@ -202,7 +202,7 @@ function ResultsTab() {
               <input
                 type="number" min="0" max="20"
                 value={row.home}
-                onChange={(e) => setField(m.id, 'home', e.target.value)}
+                onChange={(e) => setField(m, 'home', e.target.value)}
                 className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
                 placeholder="—"
               />
@@ -210,7 +210,7 @@ function ResultsTab() {
               <input
                 type="number" min="0" max="20"
                 value={row.away}
-                onChange={(e) => setField(m.id, 'away', e.target.value)}
+                onChange={(e) => setField(m, 'away', e.target.value)}
                 className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
                 placeholder="—"
               />
@@ -226,7 +226,7 @@ function ResultsTab() {
                 <span className="text-xs text-yellow-400 font-semibold">Pen:</span>
                 <select
                   value={row.pen}
-                  onChange={(e) => setField(m.id, 'pen', e.target.value)}
+                  onChange={(e) => setField(m, 'pen', e.target.value)}
                   className="flex-1 text-xs bg-union-navy-light border border-yellow-500/30 rounded-lg text-white px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 >
                   <option value="">— Sin definir —</option>
