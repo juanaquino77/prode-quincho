@@ -61,7 +61,7 @@ export function Header() {
             <div className="w-9 h-9 bg-gradient-blue rounded-full flex items-center justify-center">
               <Trophy size={18} className="text-white" />
             </div>
-            <span className="font-bold text-white text-lg hidden sm:block">Prode Quincho</span>
+            <span className="font-bold text-white text-lg hidden sm:block whitespace-nowrap">Prode Quincho</span>
           </Link>
 
           {/* Desktop Nav */}
