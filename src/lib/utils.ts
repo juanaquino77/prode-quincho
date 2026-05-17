@@ -11,22 +11,11 @@ const DAY_OF_WEEK: Record<string, number> = {
   Viernes: 5, 'Sábado': 6, Domingo: 0,
 }
 
-const DAY_OF_WEEK_REVERSE: Record<number, string> = {
-  0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles',
-  4: 'Jueves', 5: 'Viernes', 6: 'Sábado',
-}
-
-// Abreviatura usada en el DB → stage enum
+// Abreviatura usada en el DB → stage enum (formato legacy)
 const STAGE_ABBREV: Record<string, MatchStage> = {
   O:  'round_of_16',
   CF: 'quarterfinal',
   SF: 'semifinal',
-}
-
-const STAGE_ABBREV_REVERSE: Partial<Record<MatchStage, string>> = {
-  round_of_16: 'O',
-  quarterfinal: 'CF',
-  semifinal: 'SF',
 }
 
 /**
