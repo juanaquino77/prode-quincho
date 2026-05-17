@@ -74,7 +74,7 @@ export function useUpsertMatch() {
           qc.getQueryData<Match[]>(['matches', updated.competition]) ??
           qc.getQueryData<Match[]>(['matches']) ??
           []
-        const placeholder = getMatchPlaceholder(updated, allMatches)
+        const placeholder = getMatchPlaceholder(updated)
         if (placeholder) {
           const next = findNextMatch(placeholder, allMatches)
           if (next) {

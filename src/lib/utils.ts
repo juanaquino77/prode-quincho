@@ -30,21 +30,13 @@ const STAGE_ABBREV_REVERSE: Partial<Record<MatchStage, string>> = {
 }
 
 /**
- * Dado un partido terminado, devuelve el placeholder que lo referencia
- * en la siguiente ronda (ej: "Gan. CF Miércoles 1").
- * Retorna null si el stage no tiene abreviatura (final, third_place).
+ * Devuelve el placeholder canónico que referencia a este partido
+ * en la siguiente ronda: "Gan. #N" donde N es el match_number.
+ * Retorna null si el partido no tiene match_number (no debería pasar).
  */
-export function getMatchPlaceholder(match: Match, allMatches: Match[]): string | null {
-  const abbrev = STAGE_ABBREV_REVERSE[match.stage]
-  if (!abbrev) return null
-  const dayNum = new Date(match.match_date).getDay()
-  const dayStr = DAY_OF_WEEK_REVERSE[dayNum]
-  const sameGroup = allMatches
-    .filter((m) => m.stage === match.stage && new Date(m.match_date).getDay() === dayNum)
-    .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
-  const idx = sameGroup.findIndex((m) => m.id === match.id)
-  if (idx === -1) return null
-  return `Gan. ${abbrev} ${dayStr} ${idx + 1}`
+export function getMatchPlaceholder(match: Match): string | null {
+  if (match.match_number == null) return null
+  return `Gan. #${match.match_number}`
 }
 
 /**
@@ -154,20 +146,37 @@ export function getStageName(stage: string): string {
 }
 
 /**
- * Resuelve dos formatos de placeholder de equipo:
+ * Resuelve tres formatos de placeholder de equipo:
+ *
+ * Formato 0 — "Gan. #N"  (canónico — recomendado)
+ *   Busca el partido con match_number = N.
+ *   - Si terminó → devuelve al ganador.
+ *   - Si no terminó → devuelve "EquipoA o EquipoB" si ambos son concretos.
  *
  * Formato 1 — "Gan. X o Y"
  *   Busca el partido terminado donde jugaron X e Y y devuelve al ganador.
  *
- * Formato 2 — "Gan. CF Martes 1" / "Gan. SF Jueves 2" etc.
+ * Formato 2 — "Gan. CF Martes 1" / "Gan. SF Jueves 2" etc. (legacy)
  *   Busca el N-ésimo partido de esa etapa en ese día de la semana.
- *   - Si terminó → devuelve al ganador.
- *   - Si no terminó → resuelve recursivamente ambos equipos del partido
- *     y devuelve "EquipoA o EquipoB" siempre que ambos sean concretos
- *     (no sean a su vez opciones compuestas).
  */
 export function resolveTeamName(name: string, allMatches: Match[]): string {
-  // ── Formato 2: "Gan. ABBREV DíaSemana N" ──────────────────────────────────
+  // ── Formato 0: "Gan. #N" ──────────────────────────────────────────────────
+  const m0 = name.match(/^Gan\.\s+#(\d+)$/)
+  if (m0) {
+    const matchNum = parseInt(m0[1])
+    const feeder = allMatches.find((pm) => pm.match_number === matchNum)
+    if (!feeder) return name
+    if (feeder.home_score !== null && feeder.away_score !== null) {
+      const homeWins = feeder.penalty_winner === 'home' || feeder.home_score > feeder.away_score
+      return homeWins ? feeder.home_team : feeder.away_team
+    }
+    const rHome = resolveTeamName(feeder.home_team, allMatches)
+    const rAway = resolveTeamName(feeder.away_team, allMatches)
+    if (!rHome.includes(' o ') && !rAway.includes(' o ')) return `${rHome} o ${rAway}`
+    return name
+  }
+
+  // ── Formato 2: "Gan. ABBREV DíaSemana N" (legacy) ─────────────────────────
   const m2 = name.match(/^Gan\.\s+([A-Z]+)\s+(\S+)\s+(\d+)$/)
   if (m2) {
     const [, abbrev, dayStr, idxStr] = m2
