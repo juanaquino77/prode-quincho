@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { getMatchPlaceholder, findNextMatch } from '../lib/utils'
 import type { Match } from '../types'
 
 /** Suscripción Realtime: invalida el caché de matches cuando cambia la DB.
@@ -61,12 +62,34 @@ export function useUpsertMatch() {
       if (error) throw error
       return data
     },
-    onSuccess: (updated) => {
-      // Actualiza solo el partido modificado en todos los caches de matches
+    onSuccess: async (updated) => {
       qc.setQueriesData<Match[]>({ queryKey: ['matches'] }, (old) =>
         old?.map((m) => (m.id === updated.id ? updated : m))
       )
       qc.invalidateQueries({ queryKey: ['leaderboard'] })
+
+      // Propagar ganador a la siguiente ronda cuando el partido finaliza
+      if (updated.status === 'finished' && updated.home_score !== null && updated.away_score !== null) {
+        const allMatches: Match[] =
+          qc.getQueryData<Match[]>(['matches', updated.competition]) ??
+          qc.getQueryData<Match[]>(['matches']) ??
+          []
+        const placeholder = getMatchPlaceholder(updated, allMatches)
+        if (placeholder) {
+          const next = findNextMatch(placeholder, allMatches)
+          if (next) {
+            const homeWins =
+              updated.penalty_winner === 'home' ||
+              updated.home_score > updated.away_score
+            const winner = homeWins ? updated.home_team : updated.away_team
+            await supabase
+              .from('matches')
+              .update({ [next.field]: winner })
+              .eq('id', next.match.id)
+            qc.invalidateQueries({ queryKey: ['matches'] })
+          }
+        }
+      }
     },
   })
 }

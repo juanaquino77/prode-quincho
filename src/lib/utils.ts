@@ -11,11 +11,55 @@ const DAY_OF_WEEK: Record<string, number> = {
   Viernes: 5, 'Sábado': 6, Domingo: 0,
 }
 
+const DAY_OF_WEEK_REVERSE: Record<number, string> = {
+  0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles',
+  4: 'Jueves', 5: 'Viernes', 6: 'Sábado',
+}
+
 // Abreviatura usada en el DB → stage enum
 const STAGE_ABBREV: Record<string, MatchStage> = {
   O:  'round_of_16',
   CF: 'quarterfinal',
   SF: 'semifinal',
+}
+
+const STAGE_ABBREV_REVERSE: Partial<Record<MatchStage, string>> = {
+  round_of_16: 'O',
+  quarterfinal: 'CF',
+  semifinal: 'SF',
+}
+
+/**
+ * Dado un partido terminado, devuelve el placeholder que lo referencia
+ * en la siguiente ronda (ej: "Gan. CF Miércoles 1").
+ * Retorna null si el stage no tiene abreviatura (final, third_place).
+ */
+export function getMatchPlaceholder(match: Match, allMatches: Match[]): string | null {
+  const abbrev = STAGE_ABBREV_REVERSE[match.stage]
+  if (!abbrev) return null
+  const dayNum = new Date(match.match_date).getDay()
+  const dayStr = DAY_OF_WEEK_REVERSE[dayNum]
+  const sameGroup = allMatches
+    .filter((m) => m.stage === match.stage && new Date(m.match_date).getDay() === dayNum)
+    .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+  const idx = sameGroup.findIndex((m) => m.id === match.id)
+  if (idx === -1) return null
+  return `Gan. ${abbrev} ${dayStr} ${idx + 1}`
+}
+
+/**
+ * Dado un placeholder, encuentra el partido siguiente que lo tiene como
+ * home_team o away_team, y retorna el campo a actualizar.
+ */
+export function findNextMatch(
+  placeholder: string,
+  allMatches: Match[]
+): { match: Match; field: 'home_team' | 'away_team' } | null {
+  for (const m of allMatches) {
+    if (m.home_team === placeholder) return { match: m, field: 'home_team' }
+    if (m.away_team === placeholder) return { match: m, field: 'away_team' }
+  }
+  return null
 }
 
 export function cn(...inputs: ClassValue[]) {
