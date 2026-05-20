@@ -89,8 +89,16 @@ export function calcPoints(
   homePred: number,
   awayPred: number,
   penaltyPred?: PenaltyWinner | null,
+  rules?: { pts_exact?: number; pts_outcome?: number; pts_penalty_correct?: number; pts_penalty_wrong_deduct?: number; pts_penalty_wrong_deduct_draw_outcome?: number; requires_exact_score?: boolean },
 ): number {
   if (match.home_score === null || match.away_score === null) return 0
+
+  const pts_exact    = rules?.pts_exact    ?? 3
+  const pts_outcome  = rules?.pts_outcome  ?? 1
+  const pts_penalty_correct                   = rules?.pts_penalty_correct                   ?? 1
+  const pts_penalty_wrong_deduct              = rules?.pts_penalty_wrong_deduct              ?? 1
+  const pts_penalty_wrong_deduct_draw_outcome = rules?.pts_penalty_wrong_deduct_draw_outcome ?? 0
+  const requires_exact_score                  = rules?.requires_exact_score                  ?? true
 
   const exact = match.home_score === homePred && match.away_score === awayPred
   const correctOutcome =
@@ -98,23 +106,20 @@ export function calcPoints(
 
   if (!exact && !correctOutcome) return 0
 
-  let pts = exact ? 3 : 1
+  // En modo 1X2 (requires_exact_score = false), exacto cuenta como outcome
+  let pts = (exact && requires_exact_score) ? pts_exact : pts_outcome
 
   const isKnockout = KNOCKOUT_STAGES.includes(match.stage)
   const actualDraw = match.home_score === match.away_score
-  const predDraw = homePred === awayPred
+  const predDraw   = homePred === awayPred
 
-  if (
-    isKnockout &&
-    actualDraw &&
-    predDraw &&
-    match.penalty_winner != null &&
-    penaltyPred != null
-  ) {
+  if (isKnockout && actualDraw && predDraw && match.penalty_winner != null && penaltyPred != null) {
     if (penaltyPred === match.penalty_winner) {
-      pts += 1
-    } else if (exact) {
-      pts -= 1 // deduction only on exact score, not on correct-outcome-only
+      pts += pts_penalty_correct
+    } else if (exact && requires_exact_score) {
+      pts -= pts_penalty_wrong_deduct
+    } else {
+      pts -= pts_penalty_wrong_deduct_draw_outcome
     }
   }
 

@@ -557,9 +557,11 @@ const tournamentTypeSchema = z.object({
   pts_outcome: z.coerce.number().min(0).max(20),
   pts_penalty_correct: z.coerce.number().min(0).max(10),
   pts_penalty_wrong_deduct: z.coerce.number().min(0).max(10),
+  pts_penalty_wrong_deduct_draw_outcome: z.coerce.number().min(0).max(10),
   prediction_lock_hours: z.coerce.number().min(0).max(168),
   show_rival_predictions: z.enum(['before', 'after']),
   club_fee_percentage: z.coerce.number().min(0).max(100),
+  requires_exact_score: z.boolean(),
   is_active: z.boolean(),
 })
 type TournamentTypeFormData = z.infer<typeof tournamentTypeSchema>
@@ -633,10 +635,12 @@ function TypeRow({ type, onEdit }: { type: TournamentTypeAdmin; onEdit: () => vo
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-white/50">
+        <span className="col-span-2">Modo: <span className="text-white">{(type.requires_exact_score ?? true) ? 'Resultado exacto' : '1X2 (L/E/V)'}</span></span>
         <span>Exacto: <span className="text-white">{type.pts_exact}pts</span></span>
         <span>Resultado: <span className="text-white">{type.pts_outcome}pt</span></span>
         <span>Penal acierto: <span className="text-white">+{type.pts_penalty_correct}pt</span></span>
-        <span>Penal error: <span className="text-white">−{type.pts_penalty_wrong_deduct}pt</span></span>
+        <span>Penal error (exacto): <span className="text-white">−{type.pts_penalty_wrong_deduct}pt</span></span>
+        <span className="col-span-2">Penal error (empate no exacto): <span className="text-white">−{type.pts_penalty_wrong_deduct_draw_outcome ?? 0}pt</span></span>
         <span>Cierre: <span className="text-white">{type.prediction_lock_hours}h antes</span></span>
         <span>Ver rivales: <span className="text-white">{type.show_rival_predictions === 'before' ? 'Antes' : 'Después'}</span></span>
         <span className="col-span-2">% Club: <span className="text-yellow-400 font-semibold">{type.club_fee_percentage}%</span></span>
@@ -665,15 +669,18 @@ function TournamentTypeModal({
           pts_outcome: type.pts_outcome,
           pts_penalty_correct: type.pts_penalty_correct,
           pts_penalty_wrong_deduct: type.pts_penalty_wrong_deduct,
+          pts_penalty_wrong_deduct_draw_outcome: type.pts_penalty_wrong_deduct_draw_outcome ?? 0,
           prediction_lock_hours: type.prediction_lock_hours,
           show_rival_predictions: type.show_rival_predictions,
           club_fee_percentage: type.club_fee_percentage,
+          requires_exact_score: type.requires_exact_score ?? true,
           is_active: type.is_active,
         }
       : {
           pts_exact: 3, pts_outcome: 1, pts_penalty_correct: 1, pts_penalty_wrong_deduct: 1,
-          prediction_lock_hours: 2, show_rival_predictions: 'after',
-          club_fee_percentage: 10, is_active: true,
+          pts_penalty_wrong_deduct_draw_outcome: 0,
+          prediction_lock_hours: 2, show_rival_predictions: 'after' as const,
+          club_fee_percentage: 10, requires_exact_score: true, is_active: true,
         },
   })
 
@@ -694,11 +701,21 @@ function TournamentTypeModal({
 
         <div className="border border-union-blue/20 rounded-xl p-4 space-y-3">
           <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Puntajes</p>
+          <div className="flex items-center gap-2 mb-1">
+            <input type="checkbox" id="requires_exact_score" {...register('requires_exact_score')} className="accent-union-blue w-4 h-4" />
+            <label htmlFor="requires_exact_score" className="text-sm text-white/70">Resultado exacto (desactivar para modo 1X2 L/E/V)</label>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Exacto (pts)" type="number" min="0" max="20" error={errors.pts_exact?.message} {...register('pts_exact')} />
             <Input label="Resultado (pts)" type="number" min="0" max="20" error={errors.pts_outcome?.message} {...register('pts_outcome')} />
             <Input label="Penal acierto (+pts)" type="number" min="0" max="10" error={errors.pts_penalty_correct?.message} {...register('pts_penalty_correct')} />
-            <Input label="Penal error (−pts)" type="number" min="0" max="10" error={errors.pts_penalty_wrong_deduct?.message} {...register('pts_penalty_wrong_deduct')} />
+            <Input label="Penal error, exacto (−pts)" type="number" min="0" max="10" error={errors.pts_penalty_wrong_deduct?.message} {...register('pts_penalty_wrong_deduct')} />
+            <Input
+              label="Penal error, empate no exacto (−pts)"
+              type="number" min="0" max="10"
+              error={errors.pts_penalty_wrong_deduct_draw_outcome?.message}
+              {...register('pts_penalty_wrong_deduct_draw_outcome')}
+            />
           </div>
         </div>
 

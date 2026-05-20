@@ -41,6 +41,8 @@ export interface TournamentRules {
   pts_outcome: number
   pts_penalty_correct: number
   pts_penalty_wrong_deduct: number
+  pts_penalty_wrong_deduct_draw_outcome: number
+  requires_exact_score: boolean
 }
 
 export const DEFAULT_RULES: TournamentRules = {
@@ -48,6 +50,8 @@ export const DEFAULT_RULES: TournamentRules = {
   pts_outcome: 1,
   pts_penalty_correct: 1,
   pts_penalty_wrong_deduct: 1,
+  pts_penalty_wrong_deduct_draw_outcome: 0,
+  requires_exact_score: true,
 }
 
 export interface TournamentTypePublic {
@@ -58,6 +62,8 @@ export interface TournamentTypePublic {
   pts_outcome: number
   pts_penalty_correct: number
   pts_penalty_wrong_deduct: number
+  pts_penalty_wrong_deduct_draw_outcome: number
+  requires_exact_score: boolean
   prediction_lock_hours: number
   show_rival_predictions: ShowRivalPredictions
   is_active: boolean

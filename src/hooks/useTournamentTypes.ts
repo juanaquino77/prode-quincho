@@ -34,22 +34,21 @@ export function useUpsertTournamentType() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (t: Omit<TournamentTypeAdmin, 'id' | 'created_at'> & { id?: string }) => {
-      const { id, ...fields } = t
-      if (id) {
-        const { data, error } = await supabase
-          .from('tournament_types')
-          .update(fields)
-          .eq('id', id)
-          .select()
-          .single()
-        if (error) throw error
-        return data as TournamentTypeAdmin
-      }
-      const { data, error } = await supabase
-        .from('tournament_types')
-        .insert(fields)
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('admin_upsert_tournament_type', {
+        p_id:                                    t.id ?? null,
+        p_name:                                  t.name,
+        p_description:                           t.description ?? null,
+        p_pts_exact:                             t.pts_exact,
+        p_pts_outcome:                           t.pts_outcome,
+        p_pts_penalty_correct:                   t.pts_penalty_correct,
+        p_pts_penalty_wrong_deduct:              t.pts_penalty_wrong_deduct,
+        p_pts_penalty_wrong_deduct_draw_outcome: t.pts_penalty_wrong_deduct_draw_outcome,
+        p_requires_exact_score:                  t.requires_exact_score,
+        p_prediction_lock_hours:                 t.prediction_lock_hours,
+        p_show_rival_predictions:                t.show_rival_predictions,
+        p_club_fee_percentage:                   t.club_fee_percentage,
+        p_is_active:                             t.is_active,
+      })
       if (error) throw error
       return data as TournamentTypeAdmin
     },

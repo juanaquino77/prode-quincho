@@ -24,6 +24,8 @@ interface MatchCardProps {
   phaseUnlockAt?: Date
   highlighted?: boolean
   lockAt?: Date
+  requiresExactScore?: boolean
+  rules?: { pts_exact?: number; pts_outcome?: number; pts_penalty_correct?: number; pts_penalty_wrong_deduct?: number; pts_penalty_wrong_deduct_draw_outcome?: number; requires_exact_score?: boolean }
 }
 
 // ── Countdown ──────────────────────────────────────────────────
@@ -53,10 +55,19 @@ function Countdown({ unlockAt }: { unlockAt: Date }) {
   )
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt }: MatchCardProps) {
+type Outcome1X2 = 'home' | 'draw' | 'away'
+
+function decodeOutcome(h: number, a: number): Outcome1X2 {
+  if (h > a) return 'home'
+  if (h < a) return 'away'
+  return 'draw'
+}
+
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
+  const mode1X2 = !requiresExactScore
 
   useEffect(() => {
     if (highlighted && cardRef.current) {
@@ -89,9 +100,19 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   const inputsAreDraw = !isNaN(hVal) && !isNaN(aVal) && hVal === aVal
   const penaltyRequired = isKnockout && inputsAreDraw
 
+  // Outcome seleccionado en modo 1X2
+  const selectedOutcome: Outcome1X2 | null =
+    mode1X2 && !isNaN(hVal) && !isNaN(aVal) ? decodeOutcome(hVal, aVal) : null
+
+  function handleOutcomeClick(outcome: Outcome1X2) {
+    if (outcome === 'home')  { setHome('1'); setAway('0'); setPenaltyPred(null); setCommittedPenalty(null) }
+    if (outcome === 'away')  { setHome('0'); setAway('1'); setPenaltyPred(null); setCommittedPenalty(null) }
+    if (outcome === 'draw')  { setHome('0'); setAway('0') }
+  }
+
   const points =
     match.status === 'finished' && prediction
-      ? calcPoints(match, prediction.home_score_pred, prediction.away_score_pred, prediction.penalty_pred)
+      ? calcPoints(match, prediction.home_score_pred, prediction.away_score_pred, prediction.penalty_pred, rules)
       : null
 
   // Inputs are disabled when: time-locked, phase-locked, or prediction exists but not editing
@@ -131,9 +152,14 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   }
 
   async function handleSave() {
-    if (isNaN(hVal) || isNaN(aVal) || hVal < 0 || aVal < 0) return
-    if (penaltyRequired && penaltyPred === null) return
-    if (Math.abs(hVal - aVal) > 5) { setShowWarn(true); return }
+    if (mode1X2) {
+      if (selectedOutcome === null) return
+      if (penaltyRequired && penaltyPred === null) return
+    } else {
+      if (isNaN(hVal) || isNaN(aVal) || hVal < 0 || aVal < 0) return
+      if (penaltyRequired && penaltyPred === null) return
+      if (Math.abs(hVal - aVal) > 5) { setShowWarn(true); return }
+    }
     await doSave()
   }
 
@@ -217,36 +243,63 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
               {match.status === 'finished' && prediction && (
                 <span className="text-[10px] font-semibold text-union-blue/60 uppercase tracking-wider">Tu pronóstico</span>
               )}
-              {/* Score inputs — always visible, disabled when not editing */}
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number" min="0" max="9"
-                  value={home}
-                  onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleHomeChange(v) }}
-                  disabled={inputsDisabled}
-                  className={cn(
-                    'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
-                    inputsDisabled
-                      ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
-                      : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
-                  )}
-                  placeholder="-"
-                />
-                <span className="text-white/30 text-xs">-</span>
-                <input
-                  type="number" min="0" max="9"
-                  value={away}
-                  onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleAwayChange(v) }}
-                  disabled={inputsDisabled}
-                  className={cn(
-                    'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
-                    inputsDisabled
-                      ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
-                      : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
-                  )}
-                  placeholder="-"
-                />
-              </div>
+              {/* Inputs: modo exacto = scores, modo 1X2 = botones L/E/V */}
+              {mode1X2 ? (
+                <div className="flex gap-1 w-full justify-center">
+                  {(['home', 'draw', 'away'] as Outcome1X2[]).map((outcome) => {
+                    const label = outcome === 'home' ? 'L' : outcome === 'draw' ? 'E' : 'V'
+                    const isSelected = selectedOutcome === outcome
+                    return (
+                      <button
+                        key={outcome}
+                        type="button"
+                        disabled={inputsDisabled}
+                        onClick={() => handleOutcomeClick(outcome)}
+                        className={cn(
+                          'w-10 h-9 rounded text-sm font-bold transition-colors border',
+                          isSelected
+                            ? 'bg-union-blue text-white border-union-blue'
+                            : inputsDisabled
+                              ? 'bg-transparent border-white/10 text-white/30 cursor-default'
+                              : 'bg-union-navy border-union-blue/30 text-white/60 hover:text-white hover:border-union-blue/60'
+                        )}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min="0" max="9"
+                    value={home}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleHomeChange(v) }}
+                    disabled={inputsDisabled}
+                    className={cn(
+                      'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
+                      inputsDisabled
+                        ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
+                        : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
+                    )}
+                    placeholder="-"
+                  />
+                  <span className="text-white/30 text-xs">-</span>
+                  <input
+                    type="number" min="0" max="9"
+                    value={away}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleAwayChange(v) }}
+                    disabled={inputsDisabled}
+                    className={cn(
+                      'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
+                      inputsDisabled
+                        ? 'bg-transparent border border-white/10 text-white/50 cursor-default'
+                        : 'bg-union-navy border border-union-blue/30 text-white cursor-text'
+                    )}
+                    placeholder="-"
+                  />
+                </div>
+              )}
 
               {/* Penalty picker */}
               {showPenaltyPicker && (
@@ -352,7 +405,11 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                   size="sm"
                   onClick={handleSave}
                   loading={upsert.isPending}
-                  disabled={(!home && !away) || (penaltyRequired && penaltyPred === null && committedPenalty === null)}
+                  disabled={
+                    mode1X2
+                      ? selectedOutcome === null || (penaltyRequired && penaltyPred === null && committedPenalty === null)
+                      : (!home && !away) || (penaltyRequired && penaltyPred === null && committedPenalty === null)
+                  }
                 >
                   {saved
                     ? <><CheckCircle2 size={14} className="mr-1" /> Guardado</>

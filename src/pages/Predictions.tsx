@@ -286,6 +286,8 @@ export default function Predictions() {
               phaseUnlockAt={phaseUnlockTimes.get(match.id)}
               lockAt={roundLockTimes.get(match.id)}
               highlighted={match.id === highlightMatchId}
+              requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
+              rules={selectedTournament!.rules}
             />
           ))}
         </div>
