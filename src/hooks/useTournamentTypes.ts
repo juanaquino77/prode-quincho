@@ -20,10 +20,7 @@ export function useAdminTournamentTypes() {
   return useQuery({
     queryKey: ['tournament-types-admin'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tournament_types')
-        .select('*')
-        .order('name')
+      const { data, error } = await supabase.rpc('admin_list_tournament_types')
       if (error) throw error
       return data as TournamentTypeAdmin[]
     },
@@ -63,10 +60,10 @@ export function useToggleTournamentTypeActive() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('tournament_types')
-        .update({ is_active })
-        .eq('id', id)
+      const { error } = await supabase.rpc('admin_toggle_tournament_type_active', {
+        p_id: id,
+        p_is_active: is_active,
+      })
       if (error) throw error
     },
     onSuccess: () => {
