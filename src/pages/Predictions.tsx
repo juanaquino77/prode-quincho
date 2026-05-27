@@ -87,17 +87,16 @@ export default function Predictions() {
     })
   }, [predictions])
 
-  // Resetear feedback al cambiar de grupo/torneo
-  useEffect(() => { setBatchSaved(false) }, [activeGroup, selectedTournamentId])
+  // Resetear feedback al cambiar de torneo (no al cambiar de grupo, para no pisar el feedback de guardado)
+  useEffect(() => { setBatchSaved(false) }, [selectedTournamentId])
 
   const handleBatchChange = useCallback((matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => {
     setBatchValues((prev) => ({ ...prev, [matchId]: { home, away, penalty } }))
   }, [])
 
-  async function doSaveGroup(groupMatches: Match[]) {
+  async function doSaveGroup(groupMatches: Match[], currentGroup: string) {
     if (!user || !selectedTournament) return
-    const unlocked = groupMatches.filter((m) => !isMatchLockedById(m))
-    await Promise.all(unlocked.map((m) => {
+    await Promise.all(groupMatches.map((m) => {
       const v = batchValues[m.id]
       if (!v || v.home === '' || v.away === '') return Promise.resolve()
       const hVal = parseInt(v.home)
@@ -113,7 +112,11 @@ export default function Predictions() {
       })
     }))
     setBatchSaved(true)
-    setTimeout(() => setBatchSaved(false), 2500)
+    setTimeout(() => {
+      setBatchSaved(false)
+      const idx = GROUPS.indexOf(currentGroup)
+      if (idx >= 0 && idx < GROUPS.length - 1) setActiveGroup(GROUPS[idx + 1])
+    }, 1500)
   }
 
   async function handleSaveGroup(groupMatches: Match[]) {
@@ -121,7 +124,7 @@ export default function Predictions() {
     const unlocked = groupMatches.filter((m) => !isMatchLockedById(m))
     const empty = unlocked.filter((m) => {
       const v = batchValues[m.id]
-      return !v || (v.home === '' && v.away === '')
+      return !v || v.home === '' || v.away === ''
     })
     if (empty.length > 0) { setEmptyWarning(empty); return }
 
@@ -137,7 +140,7 @@ export default function Predictions() {
       return
     }
 
-    await doSaveGroup(unlocked)
+    await doSaveGroup(unlocked, activeGroup)
   }
 
   function isMatchLockedById(match: Match): boolean {
@@ -493,7 +496,7 @@ export default function Predictions() {
                 loading={upsert.isPending}
                 onClick={async () => {
                   setAbultadoWarning([])
-                  await doSaveGroup(pendingGroupRef.current)
+                  await doSaveGroup(pendingGroupRef.current, activeGroup)
                 }}
               >
                 No te metas. Mi pronóstico, mi decisión.
