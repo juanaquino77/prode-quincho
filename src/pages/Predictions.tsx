@@ -27,8 +27,10 @@ export default function Predictions() {
   const hasSyncedStage = useRef(false)
 
   const allTournaments = useMemo<Tournament[]>(() => {
-    const list: Tournament[] = []
-    if (globalTournament) list.push(globalTournament)
+    // Preferir versión de myTournaments para el global (tiene user_paid)
+    const globalWithMembership = (myTournaments ?? []).find((t) => t.type === 'global')
+    const globalEntry = globalWithMembership ?? globalTournament
+    const list: Tournament[] = globalEntry ? [globalEntry] : []
     const friends = (myTournaments ?? []).filter((t) => t.type === 'friends')
     return [...list, ...friends]
   }, [globalTournament, myTournaments])
@@ -49,7 +51,7 @@ export default function Predictions() {
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
   const createPayment = useCreatePayment()
 
-  const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid === false
+  const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
   async function handlePresentarTarjeta() {
     if (!selectedTournament) return

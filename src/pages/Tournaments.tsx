@@ -67,10 +67,29 @@ function usePredictionCompletion(
 // ─── Page ─────────────────────────────────────────────────────
 export default function Tournaments() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
   const { data: globalTournament } = useGlobalTournament()
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
+  const [blockOpen, setBlockOpen] = useState(false)
+
+  // Preferir versión de myTournaments (tiene user_paid); fallback a globalTournament
+  const globalWithMembership = myTournaments?.find((t) => t.type === 'global')
+  const globalForCard = globalWithMembership ?? globalTournament
+
+  const globalPaid = globalWithMembership?.user_paid === true
+  const globalRequiresPayment = (globalTournament?.entry_fee ?? 0) > 0
+
+  function handleCreate() {
+    if (globalRequiresPayment && !globalPaid) { setBlockOpen(true); return }
+    setCreateOpen(true)
+  }
+
+  function handleJoin() {
+    if (globalRequiresPayment && !globalPaid) { setBlockOpen(true); return }
+    setJoinOpen(true)
+  }
 
   return (
     <Layout>
@@ -80,20 +99,20 @@ export default function Tournaments() {
           <p className="text-white/50 text-sm mt-0.5">Jugá con tus amigos o en el torneo global</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setJoinOpen(true)}>
+          <Button variant="secondary" size="sm" onClick={handleJoin}>
             <LogIn size={15} className="mr-1" /> Unirse con código
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" onClick={handleCreate}>
             <Plus size={15} className="mr-1" /> Crear torneo
           </Button>
         </div>
       </div>
 
       {/* Global tournament */}
-      {globalTournament && (
+      {globalForCard && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-2">Torneo Global</h2>
-          <TournamentCard tournament={globalTournament} isGlobal userId={user?.id} />
+          <TournamentCard tournament={globalForCard} isGlobal userId={user?.id} />
         </div>
       )}
 
@@ -113,8 +132,8 @@ export default function Tournaments() {
             <Trophy size={32} className="text-white/20 mx-auto mb-3" />
             <p className="text-white/50 text-sm">Aún no estás en ningún torneo de amigos</p>
             <div className="flex gap-2 justify-center mt-4">
-              <Button size="sm" onClick={() => setCreateOpen(true)}><Plus size={14} className="mr-1" />Crear torneo</Button>
-              <Button size="sm" variant="secondary" onClick={() => setJoinOpen(true)}><LogIn size={14} className="mr-1" />Unirse con código</Button>
+              <Button size="sm" onClick={handleCreate}><Plus size={14} className="mr-1" />Crear torneo</Button>
+              <Button size="sm" variant="secondary" onClick={handleJoin}><LogIn size={14} className="mr-1" />Unirse con código</Button>
             </div>
           </Card>
         )}
@@ -122,6 +141,25 @@ export default function Tournaments() {
 
       <CreateTournamentModal open={createOpen} onClose={() => setCreateOpen(false)} userId={user!.id} />
       <JoinTournamentModal open={joinOpen} onClose={() => setJoinOpen(false)} userId={user!.id} />
+
+      {/* Modal: requiere presentar tarjeta global primero */}
+      <Modal open={blockOpen} onClose={() => setBlockOpen(false)} title="Primero presentá tu tarjeta">
+        <div className="text-center py-2 space-y-4">
+          <p className="text-4xl">🎯</p>
+          <p className="text-white/70 text-sm leading-relaxed">
+            Para crear o unirte a un torneo de amigos primero tenés que presentar tu tarjeta en el <span className="text-white font-semibold">Torneo Global</span>.
+          </p>
+          <Button
+            className="w-full"
+            onClick={() => { setBlockOpen(false); navigate(`/predicciones?t=${globalForCard?.id}`) }}
+          >
+            Ir a presentar mi tarjeta →
+          </Button>
+          <button onClick={() => setBlockOpen(false)} className="text-xs text-white/30 hover:text-white/60 transition-colors">
+            Cerrar
+          </button>
+        </div>
+      </Modal>
     </Layout>
   )
 }
@@ -141,7 +179,7 @@ function TournamentCard({ tournament, isGlobal, userId }: {
   const [rulesOpen, setRulesOpen] = useState(false)
   const isCreator = !isGlobal
 
-  const needsPayment = tournament.entry_fee > 0 && tournament.user_paid === false
+  const needsPayment = tournament.entry_fee > 0 && tournament.user_paid !== true
 
   const { total, filled, isComplete, pct } = usePredictionCompletion(
     userId,

@@ -81,14 +81,19 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
               ))}
             </select>
           </div>
-          <Input
-            label="Inscripción (ARS)"
-            type="number"
-            min="0"
-            placeholder="0 = gratuito"
-            error={errors.entry_fee?.message}
-            {...register('entry_fee')}
-          />
+          <div>
+            <Input
+              label="Inscripción (ARS)"
+              type="number"
+              min="0"
+              placeholder="0 = gratuito"
+              error={errors.entry_fee?.message}
+              {...register('entry_fee')}
+            />
+            <p className="text-xs text-white/30 mt-1.5">
+              💡 Un pequeño porcentaje de la inscripción va destinado al club.
+            </p>
+          </div>
 
           {/* Selector de tipo de torneo */}
           <div className="flex flex-col gap-2">
