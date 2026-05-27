@@ -287,10 +287,10 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                     ref={homeRef}
                     data-batch-input="home"
                     data-match-id={match.id}
-                    type="number" min="0" max="99"
+                    type="number" min="0" max="9"
                     value={home}
                     onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 1)
                       handleHomeChange(v)
                       if (v !== '' && batchMode) {
                         if (away === '') {
@@ -317,10 +317,10 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                     ref={awayRef}
                     data-batch-input="away"
                     data-match-id={match.id}
-                    type="number" min="0" max="99"
+                    type="number" min="0" max="9"
                     value={away}
                     onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 1)
                       handleAwayChange(v)
                       if (v !== '' && batchMode) {
                         const allHomes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-batch-input="home"]:not(:disabled)'))

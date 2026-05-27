@@ -487,19 +487,19 @@ export default function Predictions() {
                 )
               })}
             </ul>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => setAbultadoWarning([])}>
-                Corregir
-              </Button>
+            <div className="flex flex-col gap-2">
               <Button
-                className="flex-1"
+                className="w-full"
                 loading={upsert.isPending}
                 onClick={async () => {
                   setAbultadoWarning([])
                   await doSaveGroup(pendingGroupRef.current)
                 }}
               >
-                Guardar igual
+                No te metas. Mi pronóstico, mi decisión.
+              </Button>
+              <Button variant="secondary" className="w-full" onClick={() => setAbultadoWarning([])}>
+                Tenés razón, le pifié
               </Button>
             </div>
           </div>
