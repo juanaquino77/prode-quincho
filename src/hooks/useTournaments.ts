@@ -170,6 +170,24 @@ export function useUserPayment(userId: string | undefined, tournamentId: string 
   })
 }
 
+export function useAutoEnrollGlobal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tournamentId: string) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase
+        .from('tournament_members')
+        .insert({ tournament_id: tournamentId, user_id: user.id, paid: false })
+      // Ignorar error de duplicado (ya inscripto)
+      if (error && !error.code?.includes('23505')) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['user-tournaments'] })
+    },
+  })
+}
+
 export function useCreatePayment() {
   const qc = useQueryClient()
   return useMutation({
