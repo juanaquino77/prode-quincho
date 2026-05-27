@@ -26,6 +26,9 @@ interface MatchCardProps {
   lockAt?: Date
   requiresExactScore?: boolean
   rules?: { pts_exact?: number; pts_outcome?: number; pts_penalty_correct?: number; pts_penalty_wrong_deduct?: number; pts_penalty_wrong_deduct_draw_outcome?: number; requires_exact_score?: boolean }
+  /** Modo batch: sin botón individual; inputs siempre editables; notifica cambios al padre */
+  batchMode?: boolean
+  onBatchChange?: (matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => void
 }
 
 // ── Countdown ──────────────────────────────────────────────────
@@ -63,7 +66,7 @@ function decodeOutcome(h: number, a: number): Outcome1X2 {
   return 'draw'
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules }: MatchCardProps) {
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -115,8 +118,15 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
       ? calcPoints(match, prediction.home_score_pred, prediction.away_score_pred, prediction.penalty_pred, rules)
       : null
 
-  // Inputs are disabled when: time-locked, phase-locked, or prediction exists but not editing
-  const inputsDisabled = locked || phaseLocked || (!!prediction && !isEditing)
+  // En batch mode: notificar al padre cuando cambian los valores
+  useEffect(() => {
+    if (!batchMode || !onBatchChange) return
+    onBatchChange(match.id, home, away, penaltyPred)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [home, away, penaltyPred, batchMode])
+
+  // Inputs are disabled when: time-locked, phase-locked, or (prediction exists but not editing — solo fuera de batch mode)
+  const inputsDisabled = locked || phaseLocked || (!batchMode && !!prediction && !isEditing)
 
   function handleHomeChange(val: string) {
     setHome(val)
@@ -383,7 +393,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isEditing && (
+            {!batchMode && isEditing && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
@@ -393,7 +403,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
               </button>
             )}
 
-            {!locked && !phaseLocked && (
+            {!batchMode && !locked && !phaseLocked && (
               prediction && !isEditing ? (
                 <Button size="sm" onClick={() => setIsEditing(true)}>
                   {saved
@@ -418,14 +428,14 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
               )
             )}
 
-            {phaseLocked && (
+            {!batchMode && phaseLocked && (
               <Button size="sm" disabled>Guardar</Button>
             )}
           </div>
         </div>
 
-        {/* Deadline / locked hint */}
-        {!locked && !phaseLocked && lockAt && (
+        {/* Deadline / locked hint — solo en modo individual */}
+        {!batchMode && !locked && !phaseLocked && lockAt && (
           <p className="text-[10px] text-white/25 text-right">
             Modificable hasta el {formatLockDeadline(lockAt)}
           </p>

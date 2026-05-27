@@ -1,16 +1,16 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Trophy, Users, CreditCard, CheckCircle2 } from 'lucide-react'
+import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
 import { Button } from '../components/ui/Button'
 import { useMatches } from '../hooks/useMatches'
-import { usePredictions } from '../hooks/usePredictions'
+import { usePredictions, useUpsertPrediction } from '../hooks/usePredictions'
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
 import { getStageName, cn, resolveMatches } from '../lib/utils'
-import type { Match, MatchStage, Tournament } from '../types'
+import type { Match, MatchStage, Tournament, PenaltyWinner } from '../types'
 
 const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
 const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
@@ -50,6 +50,7 @@ export default function Predictions() {
   const { data: matches, isLoading } = useMatches(competitionFilter)
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
   const createPayment = useCreatePayment()
+  const upsert = useUpsertPrediction()
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
@@ -58,6 +59,71 @@ export default function Predictions() {
     const result = await createPayment.mutateAsync(selectedTournament.id)
     const isSandbox = import.meta.env.VITE_MP_SANDBOX === 'true'
     window.open(isSandbox ? result.sandbox_init_point : result.init_point, '_blank')
+  }
+
+  // ── Batch mode (fase de grupos) ──────────────────────────────
+  type BatchVal = { home: string; away: string; penalty: PenaltyWinner | null }
+  const [batchValues, setBatchValues] = useState<Record<string, BatchVal>>({})
+  const [batchSaved, setBatchSaved] = useState(false)
+  const [emptyWarning, setEmptyWarning] = useState<Match[]>([])
+
+  // Inicializar batchValues con predicciones ya guardadas (sin pisar cambios del user)
+  useEffect(() => {
+    if (!predictions) return
+    setBatchValues((prev) => {
+      const next = { ...prev }
+      for (const p of predictions) {
+        if (!next[p.match_id]) {
+          next[p.match_id] = {
+            home: p.home_score_pred?.toString() ?? '',
+            away: p.away_score_pred?.toString() ?? '',
+            penalty: p.penalty_pred ?? null,
+          }
+        }
+      }
+      return next
+    })
+  }, [predictions])
+
+  // Resetear feedback al cambiar de grupo/torneo
+  useEffect(() => { setBatchSaved(false) }, [activeGroup, selectedTournamentId])
+
+  const handleBatchChange = useCallback((matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => {
+    setBatchValues((prev) => ({ ...prev, [matchId]: { home, away, penalty } }))
+  }, [])
+
+  async function handleSaveGroup(groupMatches: Match[]) {
+    if (!user || !selectedTournament) return
+    const unlocked = groupMatches.filter((m) => !isMatchLockedById(m))
+    const empty = unlocked.filter((m) => {
+      const v = batchValues[m.id]
+      return !v || (v.home === '' && v.away === '')
+    })
+    if (empty.length > 0) { setEmptyWarning(empty); return }
+
+    await Promise.all(unlocked.map((m) => {
+      const v = batchValues[m.id]
+      if (!v || v.home === '' || v.away === '') return Promise.resolve()
+      const hVal = parseInt(v.home)
+      const aVal = parseInt(v.away)
+      if (isNaN(hVal) || isNaN(aVal)) return Promise.resolve()
+      return upsert.mutateAsync({
+        user_id: user.id,
+        match_id: m.id,
+        tournament_id: selectedTournament.id,
+        home_score_pred: hVal,
+        away_score_pred: aVal,
+        penalty_pred: v.penalty,
+      })
+    }))
+    setBatchSaved(true)
+    setTimeout(() => setBatchSaved(false), 2500)
+  }
+
+  function isMatchLockedById(match: Match): boolean {
+    const lockAt = roundLockTimes.get(match.id)
+    if (!lockAt) return false
+    return Date.now() >= lockAt.getTime()
   }
 
   // Si viene un matchId por URL, navega a esa etapa
@@ -286,8 +352,41 @@ export default function Predictions() {
         <div className="text-center py-12 text-white/40">Cargando partidos...</div>
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-12 text-white/40">No hay partidos en esta etapa</div>
+      ) : resolvedStage === 'group' ? (
+        /* ── Fase de grupos: modo batch con botón único por grupo ── */
+        <>
+          <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', needsPayment ? 'pb-24' : '')}>
+            {filteredMatches.map((match: Match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                prediction={predMap.get(match.id)}
+                tournamentId={selectedTournament!.id}
+                userId={user!.id}
+                lockAt={roundLockTimes.get(match.id)}
+                highlighted={match.id === highlightMatchId}
+                requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
+                rules={selectedTournament!.rules}
+                batchMode
+                onBatchChange={handleBatchChange}
+              />
+            ))}
+          </div>
+          <div className="mt-4">
+            <Button
+              className="w-full py-3 text-sm font-bold"
+              onClick={() => handleSaveGroup(filteredMatches)}
+              loading={upsert.isPending}
+            >
+              {batchSaved
+                ? <><CheckCircle2 size={16} className="mr-2" />¡Pronósticos del Grupo {activeGroup} guardados!</>
+                : `Guardar pronósticos del Grupo ${activeGroup}`}
+            </Button>
+          </div>
+        </>
       ) : (
-        <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', selectedTournament?.entry_fee && selectedTournament.entry_fee > 0 ? 'pb-24' : '')}>
+        /* ── Etapas eliminatorias: modo individual (sin cambios) ── */
+        <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', needsPayment ? 'pb-24' : '')}>
           {filteredMatches.map((match: Match) => (
             <MatchCard
               key={match.id}
@@ -303,6 +402,31 @@ export default function Predictions() {
               rules={selectedTournament!.rules}
             />
           ))}
+        </div>
+      )}
+
+      {/* Modal advertencia: partidos sin resultado */}
+      {emptyWarning.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-union-navy border border-yellow-500/30 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle size={22} className="text-yellow-400 shrink-0" />
+              <p className="text-white font-bold text-base">Partidos sin resultado</p>
+            </div>
+            <p className="text-white/60 text-sm mb-3">
+              Los siguientes partidos no tienen pronóstico:
+            </p>
+            <ul className="mb-5 space-y-1">
+              {emptyWarning.map((m) => (
+                <li key={m.id} className="text-yellow-400 text-sm font-semibold">
+                  {m.home_team} vs {m.away_team}
+                </li>
+              ))}
+            </ul>
+            <Button className="w-full" onClick={() => setEmptyWarning([])}>
+              Volver a completarlos
+            </Button>
+          </div>
         </div>
       )}
 
