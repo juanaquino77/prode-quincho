@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle, Save } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
 import { Button } from '../components/ui/Button'
@@ -352,19 +352,32 @@ export default function Predictions() {
 
       {/* Group tabs */}
       {showGroupTabs && (
-        <div className="flex gap-1 mb-4 flex-wrap">
-          {GROUPS.map((g) => (
-            <button
-              key={g}
-              onClick={() => setActiveGroup(g)}
-              className={cn(
-                'w-9 h-9 rounded-lg text-xs font-bold transition-colors',
-                activeGroup === g ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/40 hover:text-white'
-              )}
-            >
-              {g}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex gap-1 flex-wrap flex-1">
+            {GROUPS.map((g) => (
+              <button
+                key={g}
+                onClick={() => setActiveGroup(g)}
+                className={cn(
+                  'w-9 h-9 rounded-lg text-xs font-bold transition-colors',
+                  activeGroup === g ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/40 hover:text-white'
+                )}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => handleSaveGroup(filteredMatches)}
+            disabled={upsert.isPending}
+            title={`Guardar Grupo ${activeGroup}`}
+            className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-bold bg-union-blue text-white hover:bg-union-blue/80 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            {batchSaved
+              ? <CheckCircle2 size={14} />
+              : <Save size={14} />}
+            {batchSaved ? '¡Listo!' : 'Guardar'}
+          </button>
         </div>
       )}
 

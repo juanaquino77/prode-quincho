@@ -70,6 +70,8 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
+  const homeRef = useRef<HTMLInputElement>(null)
+  const awayRef = useRef<HTMLInputElement>(null)
   const mode1X2 = !requiresExactScore
 
   useEffect(() => {
@@ -282,9 +284,25 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
               ) : (
                 <div className="flex items-center gap-1.5">
                   <input
-                    type="number" min="0" max="9"
+                    ref={homeRef}
+                    data-batch-input="home"
+                    data-match-id={match.id}
+                    type="number" min="0" max="99"
                     value={home}
-                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleHomeChange(v) }}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      handleHomeChange(v)
+                      if (v !== '' && batchMode) {
+                        if (away === '') {
+                          awayRef.current?.focus()
+                          awayRef.current?.select()
+                        } else {
+                          const allHomes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-batch-input="home"]:not(:disabled)'))
+                          const next = allHomes[allHomes.indexOf(homeRef.current!) + 1]
+                          if (next) { next.focus(); next.select() }
+                        }
+                      }
+                    }}
                     disabled={inputsDisabled}
                     className={cn(
                       'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
@@ -296,9 +314,20 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                   />
                   <span className="text-white/30 text-xs">-</span>
                   <input
-                    type="number" min="0" max="9"
+                    ref={awayRef}
+                    data-batch-input="away"
+                    data-match-id={match.id}
+                    type="number" min="0" max="99"
                     value={away}
-                    onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 1); handleAwayChange(v) }}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                      handleAwayChange(v)
+                      if (v !== '' && batchMode) {
+                        const allHomes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-batch-input="home"]:not(:disabled)'))
+                        const next = allHomes[allHomes.indexOf(homeRef.current!) + 1]
+                        if (next) { next.focus(); next.select() }
+                      }
+                    }}
                     disabled={inputsDisabled}
                     className={cn(
                       'w-10 h-9 text-center rounded text-sm focus:outline-none focus:ring-1 focus:ring-union-blue placeholder:text-white/25 transition-colors',
