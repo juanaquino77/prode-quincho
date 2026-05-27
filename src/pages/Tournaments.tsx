@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
-  ChevronRight, Copy, Check, ClipboardList, LayoutList, CreditCard, ScrollText, QrCode,
+  ChevronRight, Copy, Check, ClipboardList, LayoutList, ScrollText, QrCode,
 } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
 import { Layout } from '../components/layout/Layout'
@@ -13,7 +13,7 @@ import { Modal } from '../components/ui/Modal'
 import { CreateTournamentModal } from '../components/tournaments/CreateTournamentModal'
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
 import { TournamentRulesModal } from '../components/tournaments/TournamentRulesModal'
-import { useUserTournaments, useGlobalTournament, useDeleteTournament, useCreatePayment } from '../hooks/useTournaments'
+import { useUserTournaments, useGlobalTournament, useDeleteTournament } from '../hooks/useTournaments'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { useAuthStore } from '../store/authStore'
@@ -134,7 +134,6 @@ function TournamentCard({ tournament, isGlobal, userId }: {
 }) {
   const navigate = useNavigate()
   const deleteTournament = useDeleteTournament()
-  const createPayment = useCreatePayment()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
@@ -197,21 +196,13 @@ function TournamentCard({ tournament, isGlobal, userId }: {
     setConfirmDelete(false)
   }
 
-  async function handlePay(e: React.MouseEvent) {
-    e.stopPropagation()
-    const result = await createPayment.mutateAsync(tournament.id)
-    // En sandbox usar sandbox_init_point, en prod usar init_point
-    window.open(result.init_point, '_blank')
-  }
-
   function handleCardClick() {
-    if (needsPayment) return
     navigate(destination)
   }
 
   return (
     <>
-      <div className={cn('group', needsPayment ? 'cursor-default' : 'cursor-pointer')} onClick={handleCardClick}>
+      <div className="group cursor-pointer" onClick={handleCardClick}>
         <Card glow={isGlobal} className={cn(
           'transition-all',
           needsPayment
@@ -249,49 +240,37 @@ function TournamentCard({ tournament, isGlobal, userId }: {
             {tournament.member_count ?? 0} participante{tournament.member_count !== 1 ? 's' : ''}
           </div>
 
-          {/* Payment banner */}
-          {needsPayment ? (
-            <div className="mb-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-3">
-              <p className="text-yellow-400 text-xs font-semibold mb-2">
-                Pagá la entrada para activar tus pronósticos
-              </p>
-              <Button
-                size="sm"
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
-                onClick={handlePay}
-                loading={createPayment.isPending}
-              >
-                <CreditCard size={14} className="mr-1.5" />
-                Pagar ${tournament.entry_fee} ARS
-              </Button>
+          {/* Prediction progress */}
+          {total > 0 && (
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-white/40">Mis pronósticos</span>
+                <span className={cn(
+                  'text-[11px] font-semibold',
+                  isComplete ? 'text-green-400' : pct > 0 ? 'text-yellow-400' : 'text-white/30'
+                )}>
+                  {isComplete ? '✓ Completo' : `${filled}/${total}`}
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500', progressColor)}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </div>
-          ) : (
-            <>
-              {/* Prediction progress */}
-              {total > 0 && (
-                <div className="mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-white/40">Mis pronósticos</span>
-                    <span className={cn(
-                      'text-[11px] font-semibold',
-                      isComplete ? 'text-green-400' : pct > 0 ? 'text-yellow-400' : 'text-white/30'
-                    )}>
-                      {isComplete ? '✓ Completo' : `${filled}/${total}`}
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className={cn('h-full rounded-full transition-all duration-500', progressColor)}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+          )}
 
-              {tournament.entry_fee > 0 && (
-                <p className="text-sm text-green-400 font-medium mb-2">✓ Entrada pagada</p>
-              )}
-            </>
+          {/* Payment status */}
+          {tournament.entry_fee > 0 && (
+            needsPayment ? (
+              <div className="mb-3 flex items-center justify-between rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-3 py-2">
+                <span className="text-yellow-400 text-xs font-semibold">Entrada: ${tournament.entry_fee} ARS</span>
+                <span className="text-white/30 text-xs">Pagar al presentar</span>
+              </div>
+            ) : (
+              <p className="text-sm text-green-400 font-medium mb-2">✓ Entrada pagada</p>
+            )
           )}
 
           {/* Invite code */}
@@ -325,9 +304,8 @@ function TournamentCard({ tournament, isGlobal, userId }: {
             </div>
           )}
 
-          {/* CTA — solo si ya pagó */}
-          {!needsPayment && (
-            <div className="flex items-center justify-between pt-2 border-t border-union-blue/10">
+          {/* CTA */}
+          <div className="flex items-center justify-between pt-2 border-t border-union-blue/10">
               <button
                 onClick={(e) => { e.stopPropagation(); setRulesOpen(true) }}
                 className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
@@ -348,7 +326,6 @@ function TournamentCard({ tournament, isGlobal, userId }: {
                 <ChevronRight size={13} />
               </div>
             </div>
-          )}
         </Card>
       </div>
 

@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Trophy, Users } from 'lucide-react'
+import { Trophy, Users, CreditCard, CheckCircle2 } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
+import { Button } from '../components/ui/Button'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
-import { useGlobalTournament, useUserTournaments } from '../hooks/useTournaments'
+import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
 import { getStageName, cn, resolveMatches } from '../lib/utils'
@@ -46,6 +47,15 @@ export default function Predictions() {
   const competitionFilter = selectedTournament?.competition ?? undefined
   const { data: matches, isLoading } = useMatches(competitionFilter)
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
+  const createPayment = useCreatePayment()
+
+  const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid === false
+
+  async function handlePresentarTarjeta() {
+    if (!selectedTournament) return
+    const result = await createPayment.mutateAsync(selectedTournament.id)
+    window.open(result.init_point, '_blank')
+  }
 
   // Si viene un matchId por URL, navega a esa etapa
   useEffect(() => {
@@ -274,7 +284,7 @@ export default function Predictions() {
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-12 text-white/40">No hay partidos en esta etapa</div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', selectedTournament?.entry_fee && selectedTournament.entry_fee > 0 ? 'pb-24' : '')}>
           {filteredMatches.map((match: Match) => (
             <MatchCard
               key={match.id}
@@ -290,6 +300,29 @@ export default function Predictions() {
               rules={selectedTournament!.rules}
             />
           ))}
+        </div>
+      )}
+
+      {/* Presentar tarjeta — sticky bottom bar para torneos con entrada */}
+      {selectedTournament && (selectedTournament.entry_fee ?? 0) > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-union-navy/95 backdrop-blur-sm border-t border-union-blue/20 px-4 py-3">
+          <div className="max-w-7xl mx-auto">
+            {needsPayment ? (
+              <Button
+                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3"
+                onClick={handlePresentarTarjeta}
+                loading={createPayment.isPending}
+              >
+                <CreditCard size={16} className="mr-2" />
+                Presentar tarjeta — ${selectedTournament.entry_fee} ARS
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-2 text-green-400 font-semibold">
+                <CheckCircle2 size={18} />
+                Tarjeta presentada
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Layout>
