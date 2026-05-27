@@ -54,7 +54,8 @@ export default function Predictions() {
   async function handlePresentarTarjeta() {
     if (!selectedTournament) return
     const result = await createPayment.mutateAsync(selectedTournament.id)
-    window.open(result.init_point, '_blank')
+    const isSandbox = import.meta.env.VITE_MP_SANDBOX === 'true'
+    window.open(isSandbox ? result.sandbox_init_point : result.init_point, '_blank')
   }
 
   // Si viene un matchId por URL, navega a esa etapa
