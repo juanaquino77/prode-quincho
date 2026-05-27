@@ -66,6 +66,8 @@ export default function Predictions() {
   const [batchValues, setBatchValues] = useState<Record<string, BatchVal>>({})
   const [batchSaved, setBatchSaved] = useState(false)
   const [emptyWarning, setEmptyWarning] = useState<Match[]>([])
+  const [abultadoWarning, setAbultadoWarning] = useState<Match[]>([])
+  const pendingGroupRef = useRef<Match[]>([])
 
   // Inicializar batchValues con predicciones ya guardadas (sin pisar cambios del user)
   useEffect(() => {
@@ -92,15 +94,9 @@ export default function Predictions() {
     setBatchValues((prev) => ({ ...prev, [matchId]: { home, away, penalty } }))
   }, [])
 
-  async function handleSaveGroup(groupMatches: Match[]) {
+  async function doSaveGroup(groupMatches: Match[]) {
     if (!user || !selectedTournament) return
     const unlocked = groupMatches.filter((m) => !isMatchLockedById(m))
-    const empty = unlocked.filter((m) => {
-      const v = batchValues[m.id]
-      return !v || (v.home === '' && v.away === '')
-    })
-    if (empty.length > 0) { setEmptyWarning(empty); return }
-
     await Promise.all(unlocked.map((m) => {
       const v = batchValues[m.id]
       if (!v || v.home === '' || v.away === '') return Promise.resolve()
@@ -118,6 +114,30 @@ export default function Predictions() {
     }))
     setBatchSaved(true)
     setTimeout(() => setBatchSaved(false), 2500)
+  }
+
+  async function handleSaveGroup(groupMatches: Match[]) {
+    if (!user || !selectedTournament) return
+    const unlocked = groupMatches.filter((m) => !isMatchLockedById(m))
+    const empty = unlocked.filter((m) => {
+      const v = batchValues[m.id]
+      return !v || (v.home === '' && v.away === '')
+    })
+    if (empty.length > 0) { setEmptyWarning(empty); return }
+
+    const abultados = unlocked.filter((m) => {
+      const v = batchValues[m.id]
+      if (!v || v.home === '' || v.away === '') return false
+      const h = parseInt(v.home), a = parseInt(v.away)
+      return !isNaN(h) && !isNaN(a) && Math.abs(h - a) > 5
+    })
+    if (abultados.length > 0) {
+      pendingGroupRef.current = unlocked
+      setAbultadoWarning(abultados)
+      return
+    }
+
+    await doSaveGroup(unlocked)
   }
 
   function isMatchLockedById(match: Match): boolean {
@@ -372,7 +392,7 @@ export default function Predictions() {
               />
             ))}
           </div>
-          <div className="mt-4">
+          <div className={cn('mt-4', needsPayment ? 'mb-28' : 'mb-4')}>
             <Button
               className="w-full py-3 text-sm font-bold"
               onClick={() => handleSaveGroup(filteredMatches)}
@@ -426,6 +446,49 @@ export default function Predictions() {
             <Button className="w-full" onClick={() => setEmptyWarning([])}>
               Volver a completarlos
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal advertencia: diferencia de goles abultada */}
+      {abultadoWarning.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-union-navy border border-orange-500/30 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle size={22} className="text-orange-400 shrink-0" />
+              <p className="text-white font-bold text-base">Resultado muy abultado</p>
+            </div>
+            <p className="text-white/60 text-sm mb-3">
+              {abultadoWarning.length === 1
+                ? 'El siguiente partido tiene una diferencia de más de 5 goles:'
+                : 'Los siguientes partidos tienen una diferencia de más de 5 goles:'}
+            </p>
+            <ul className="mb-5 space-y-1">
+              {abultadoWarning.map((m) => {
+                const v = batchValues[m.id]
+                return (
+                  <li key={m.id} className="text-orange-400 text-sm font-semibold">
+                    {m.home_team} vs {m.away_team}
+                    {v && ` (${v.home}-${v.away})`}
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setAbultadoWarning([])}>
+                Corregir
+              </Button>
+              <Button
+                className="flex-1"
+                loading={upsert.isPending}
+                onClick={async () => {
+                  setAbultadoWarning([])
+                  await doSaveGroup(pendingGroupRef.current)
+                }}
+              >
+                Guardar igual
+              </Button>
+            </div>
           </div>
         </div>
       )}
