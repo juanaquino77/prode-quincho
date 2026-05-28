@@ -18,7 +18,7 @@ const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
 export default function Predictions() {
   const { user } = useAuthStore()
   const { data: globalTournament } = useGlobalTournament()
-  const { data: myTournaments, isLoading: myTournamentsLoading } = useUserTournaments(user?.id)
+  const { data: myTournaments, isLoading: myTournamentsLoading, isFetching: myTournamentsFetching } = useUserTournaments(user?.id)
   const { selectedTournamentId, setSelectedTournamentId } = useTournamentStore()
   const [searchParams] = useSearchParams()
 
@@ -510,7 +510,7 @@ export default function Predictions() {
       )}
 
       {/* Presentar tarjeta — sticky bottom bar para torneos con entrada */}
-      {!myTournamentsLoading && selectedTournament && (selectedTournament.entry_fee ?? 0) > 0 && (
+      {!myTournamentsLoading && !myTournamentsFetching && selectedTournament && (selectedTournament.entry_fee ?? 0) > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-union-navy/95 backdrop-blur-sm border-t border-union-blue/20 px-4 py-3">
           <div className="max-w-7xl mx-auto">
             {needsPayment ? (
