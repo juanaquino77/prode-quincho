@@ -108,7 +108,9 @@ export default function Predictions() {
   const [batchSaved, setBatchSaved] = useState(false)
   const [emptyWarning, setEmptyWarning] = useState<Match[]>([])
   const [abultadoWarning, setAbultadoWarning] = useState<Match[]>([])
+  const [corazonadaWarning, setCorazonadaWarning] = useState(false)
   const pendingGroupRef = useRef<Match[]>([])
+  const firstInputRef = useRef<HTMLDivElement>(null)
 
   // Inicializar batchValues con predicciones ya guardadas (sin pisar cambios del user)
   useEffect(() => {
@@ -130,6 +132,18 @@ export default function Predictions() {
 
   // Resetear feedback al cambiar de torneo (no al cambiar de grupo, para no pisar el feedback de guardado)
   useEffect(() => { setBatchSaved(false) }, [selectedTournamentId])
+
+  // Focus primer input y resetear warnings al cambiar de grupo
+  useEffect(() => {
+    if (resolvedStage !== 'group') return
+    setCorazonadaWarning(false)
+    setEmptyWarning([])
+    const timer = setTimeout(() => {
+      const firstInput = firstInputRef.current?.querySelector<HTMLInputElement>('input[type="number"]')
+      firstInput?.focus()
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [activeGroup, resolvedStage])
 
   const handleBatchChange = useCallback((matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => {
     setBatchValues((prev) => ({ ...prev, [matchId]: { home, away, penalty } }))
@@ -168,6 +182,12 @@ export default function Predictions() {
       return !v || v.home === '' || v.away === ''
     })
     if (empty.length > 0) { setEmptyWarning(empty); return }
+
+    // Bloquear si falta la corazonada del grupo (solo si el grupo no está cerrado)
+    if (hasCorazonada && !isGroupLocked(activeGroup) && !groupMatches.some((m) => corazonadaByMatchId.has(m.id))) {
+      setCorazonadaWarning(true)
+      return
+    }
 
     const abultados = unlocked.filter((m) => {
       const v = batchValues[m.id]
@@ -445,7 +465,7 @@ export default function Predictions() {
       ) : resolvedStage === 'group' ? (
         /* ── Fase de grupos: modo batch con botón único por grupo ── */
         <>
-          <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', needsPayment ? 'pb-24' : '')}>
+          <div ref={firstInputRef} className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', needsPayment ? 'pb-24' : '')}>
             {filteredMatches.map((match: Match) => (
               <MatchCard
                 key={match.id}
@@ -468,6 +488,15 @@ export default function Predictions() {
               />
             ))}
           </div>
+          {corazonadaWarning && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+              <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+              <p className="text-sm text-amber-300 flex-1">
+                Falta elegir la <span className="font-semibold">💛 corazonada</span> del Grupo {activeGroup} antes de guardar.
+              </p>
+              <button onClick={() => setCorazonadaWarning(false)} className="text-white/30 hover:text-white/60 text-xs">✕</button>
+            </div>
+          )}
           <div className={cn('mt-4', needsPayment ? 'mb-28' : 'mb-4')}>
             <Button
               className="w-full py-3 text-sm font-bold"
