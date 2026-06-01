@@ -143,7 +143,7 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
   )
 }
 
-// ── Team select (dropdown nativo con flags) ─────────────────────────────────
+// ── Team combobox (searchable, igual que PlayerCombobox) ────────────────────
 
 function TeamSelect({
   value,
@@ -154,29 +154,82 @@ function TeamSelect({
   onChange: (v: string) => void
   disabled: boolean
 }) {
-  const selected = WC2026_TEAMS.find((t) => t.name === value)
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const filtered = WC2026_TEAMS.filter((t) =>
+    t.name.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 10)
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value)
+    setOpen(true)
+  }
+
+  function handleSelect(name: string) {
+    onChange(name)
+    setQuery('')
+    setOpen(false)
+  }
+
+  function handleFocus() {
+    setQuery('')
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const displayValue = open ? query : value
+  const selectedTeam = WC2026_TEAMS.find((t) => t.name === value)
+
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+    <div ref={containerRef} className="relative">
+      <input
+        type="text"
+        value={displayValue}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder={value || 'Buscá o escribí un país...'}
         disabled={disabled}
-        className="w-full appearance-none bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <option value="">— Seleccioná un equipo —</option>
-        {WC2026_TEAMS.map((t) => (
-          <option key={t.name} value={t.name}>
-            {t.flag} {t.name}
-          </option>
-        ))}
-      </select>
-      {/* Show selected flag overlay */}
-      {selected && (
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base select-none">
-          {selected.flag}
+        className="w-full bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+      />
+      {value && !open && selectedTeam && (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base">
+          {selectedTeam.flag}
         </span>
       )}
-      <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40" />
+
+      {open && (
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#0d1b2e] border border-union-blue/20 rounded-xl shadow-xl overflow-hidden">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2.5 text-xs text-white/40">
+              {query ? `"${query}" — no encontrado` : 'Escribí para buscar'}
+            </p>
+          ) : (
+            filtered.map((t) => (
+              <button
+                key={t.name}
+                type="button"
+                onMouseDown={() => handleSelect(t.name)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-white/5 transition-colors"
+              >
+                <span className="text-base leading-none">{t.flag}</span>
+                <span className="text-white font-medium">{t.name}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }
