@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff, Ticket } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -25,6 +25,7 @@ interface AdminUser {
   full_name: string | null
   avatar_url: string | null
   user_is_admin: boolean
+  free_pass: boolean
   created_at: string
 }
 
@@ -48,6 +49,17 @@ function useAdminDeleteUser() {
   return useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase.rpc('admin_delete_user', { p_user_id: userId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+}
+
+function useToggleFreePass() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, freePass }: { userId: string; freePass: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_free_pass', { p_user_id: userId, p_free_pass: freePass })
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
@@ -348,6 +360,7 @@ function MatchesTab() {
 function UsersTab() {
   const { data: users, isLoading, error } = useAdminUsers()
   const deleteUser = useAdminDeleteUser()
+  const toggleFreePass = useToggleFreePass()
   const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null)
 
   async function handleDelete() {
@@ -396,6 +409,11 @@ function UsersTab() {
                       <ShieldAlert size={10} className="mr-1" />Admin
                     </Badge>
                   )}
+                  {u.free_pass && (
+                    <Badge variant="green">
+                      <Ticket size={10} className="mr-1" />Pase libre
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-white/40 truncate">{u.email}</p>
               </div>
@@ -404,6 +422,17 @@ function UsersTab() {
               <span className="text-xs text-white/30 hidden sm:block shrink-0">
                 {new Date(u.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </span>
+
+              {/* Free pass toggle */}
+              {!u.user_is_admin && (
+                <button
+                  onClick={() => toggleFreePass.mutate({ userId: u.user_id, freePass: !u.free_pass })}
+                  className={`p-1.5 transition-colors shrink-0 ${u.free_pass ? 'text-green-400 hover:text-green-300' : 'text-white/30 hover:text-green-400'}`}
+                  title={u.free_pass ? 'Quitar pase libre' : 'Dar pase libre'}
+                >
+                  <Ticket size={15} />
+                </button>
+              )}
 
               {/* Delete */}
               {!u.user_is_admin && (
