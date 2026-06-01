@@ -2,9 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Corazonada } from '../types'
 
-export const CORAZONADA_MAX = 3
-
-/** Devuelve todas las corazonadas del usuario para un torneo (máximo 3) */
+/** Devuelve todas las corazonadas del usuario para un torneo (1 por grupo) */
 export function useCorazonadas(userId: string | undefined, tournamentId: string | undefined) {
   return useQuery({
     queryKey: ['corazonadas', userId, tournamentId],
@@ -22,7 +20,7 @@ export function useCorazonadas(userId: string | undefined, tournamentId: string 
   })
 }
 
-/** Agrega un partido como corazonada (máximo 3 por torneo, validado en DB) */
+/** Marca un partido como corazonada de su grupo (upsert por grupo) */
 export function useAddCorazonada() {
   const qc = useQueryClient()
   return useMutation({
@@ -30,10 +28,11 @@ export function useAddCorazonada() {
       user_id: string
       tournament_id: string
       match_id: string
+      group_name: string | null
     }) => {
       const { data, error } = await supabase
         .from('corazonadas')
-        .insert(payload)
+        .upsert(payload, { onConflict: 'user_id,tournament_id,group_name' })
         .select()
         .single()
       if (error) throw error

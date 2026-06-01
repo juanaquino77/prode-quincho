@@ -62,7 +62,7 @@ export default function Predictions() {
   )
   const upsertSpecial = useUpsertSpecialPrediction()
 
-  // ── Corazonadas (máx 3) ─────────────────────────────────────
+  // ── Corazonadas: 1 por grupo ─────────────────────────────────
   const hasCorazonada = selectedTournament?.has_corazonada ?? false
   const ptsCorazonadaBonus = selectedTournament?.pts_corazonada_bonus ?? 5
   const { data: corazonadas = [] } = useCorazonadas(
@@ -72,13 +72,26 @@ export default function Predictions() {
   const addCorazonada = useAddCorazonada()
   const removeCorazonada = useRemoveCorazonada()
 
-  const corazonadaMatchIds = new Set(corazonadas.map((c) => c.match_id))
+  // matchId → corazonada (para lookup rápido)
+  const corazonadaByMatchId = new Map(corazonadas.map((c) => [c.match_id, c]))
 
-  // Cuántas corazonadas ya se jugaron (partido cerrado) → no se pueden quitar
-  const corazonadaLockedCount = corazonadas.filter((c) => {
-    const m = (matches ?? []).find((m) => m.id === c.match_id)
-    return m ? isMatchLocked(m) : false
-  }).length
+  // Primer partido de cada grupo → determina cuándo se cierra la corazonada de ese grupo
+  const groupLockTimes = useMemo<Map<string, Date>>(() => {
+    const map = new Map<string, Date>()
+    for (const m of matches ?? []) {
+      if (!m.group_name) continue
+      const existing = map.get(m.group_name)
+      const d = new Date(m.match_date)
+      if (!existing || d < existing) map.set(m.group_name, d)
+    }
+    return map
+  }, [matches])
+
+  function isGroupLocked(groupName: string | null): boolean {
+    if (!groupName) return false
+    const lockTime = groupLockTimes.get(groupName)
+    return lockTime ? Date.now() >= lockTime.getTime() : false
+  }
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
@@ -447,12 +460,10 @@ export default function Predictions() {
                 batchMode
                 onBatchChange={handleBatchChange}
                 corazonadaEnabled={hasCorazonada}
-                isCorazonada={corazonadaMatchIds.has(match.id)}
-                corazonadaLocked={corazonadaMatchIds.has(match.id) && isMatchLocked(match)}
-                corazonadaCount={corazonadas.length}
-                corazonadaLockedCount={corazonadaLockedCount}
+                isCorazonada={corazonadaByMatchId.has(match.id)}
+                corazonadaLocked={isGroupLocked(match.group_name)}
                 ptsCorazonadaBonus={ptsCorazonadaBonus}
-                onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+                onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
                 onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
               />
             ))}
@@ -486,12 +497,10 @@ export default function Predictions() {
               requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
               rules={selectedTournament!.rules}
               corazonadaEnabled={hasCorazonada}
-              isCorazonada={corazonadaMatchIds.has(match.id)}
-              corazonadaLocked={corazonadaMatchIds.has(match.id) && isMatchLocked(match)}
-              corazonadaCount={corazonadas.length}
-              corazonadaLockedCount={corazonadaLockedCount}
+              isCorazonada={corazonadaByMatchId.has(match.id)}
+              corazonadaLocked={isGroupLocked(match.group_name)}
               ptsCorazonadaBonus={ptsCorazonadaBonus}
-              onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+              onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
               onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
             />
           ))}

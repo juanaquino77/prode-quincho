@@ -1,15 +1,16 @@
 import { Modal } from '../ui/Modal'
-import { DEFAULT_RULES } from '../../types'
+import { DEFAULT_RULES, SPECIAL_PREDICTION_POINTS } from '../../types'
 import type { Tournament, TournamentRules } from '../../types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  tournament: Pick<Tournament, 'name' | 'rules' | 'prediction_lock_hours' | 'show_rival_predictions'>
+  tournament: Pick<Tournament, 'name' | 'rules' | 'prediction_lock_hours' | 'show_rival_predictions' | 'has_special_predictions' | 'has_corazonada' | 'pts_corazonada_bonus'>
 }
 
 export function TournamentRulesModal({ open, onClose, tournament }: Props) {
   const r: TournamentRules = tournament.rules ?? DEFAULT_RULES
+  const bonus = tournament.pts_corazonada_bonus ?? 5
 
   return (
     <Modal open={open} onClose={onClose} title="Reglas de puntuación">
@@ -50,6 +51,54 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
             />
           </div>
         </div>
+
+        {/* Corazonada */}
+        {tournament.has_corazonada && (
+          <div className="border-t border-amber-500/15 pt-3 mt-3">
+            <p className="text-[11px] font-semibold text-amber-400/50 uppercase tracking-wider mb-3">
+              💛 Corazonada
+            </p>
+            <div className="space-y-3">
+              <RuleRow
+                icon="💛"
+                label="1 Corazonada por grupo"
+                value={`+${bonus} pts`}
+                valueColor="text-amber-400"
+                description={`Elegí un partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, sumás ${bonus} puntos extra.`}
+              />
+              <RuleRow
+                icon="🔒"
+                label="Cierre de Corazonada"
+                value="1er partido del grupo"
+                valueColor="text-white/50"
+                description="La Corazonada se puede cambiar hasta que empiece el primer partido de ese grupo. Después queda fija."
+              />
+              <RuleRow
+                icon="⚽"
+                label="Condición para el bonus"
+                value="Solo exacto"
+                valueColor="text-white/50"
+                description="El bonus de Corazonada se aplica únicamente si acertás el marcador exacto, no si solo acertás el resultado."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Predicciones especiales */}
+        {tournament.has_special_predictions && (
+          <div className="border-t border-amber-500/15 pt-3 mt-3">
+            <p className="text-[11px] font-semibold text-amber-400/50 uppercase tracking-wider mb-3">
+              ⭐ Predicciones Especiales
+            </p>
+            <RuleRow
+              icon="🏆"
+              label="Campeón · Goleador · MVP"
+              value={`${SPECIAL_PREDICTION_POINTS} pts c/u`}
+              valueColor="text-amber-400"
+              description={`Elegís antes del torneo quién va a ganar, quién va a ser el goleador y el mejor jugador. ${SPECIAL_PREDICTION_POINTS} puntos por cada acierto. Se cierran al inicio del torneo.`}
+            />
+          </div>
+        )}
 
         <div className="border-t border-union-blue/10 pt-3 mt-3 space-y-3">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">

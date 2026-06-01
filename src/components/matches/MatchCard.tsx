@@ -30,11 +30,9 @@ interface MatchCardProps {
   batchMode?: boolean
   onBatchChange?: (matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => void
   // Corazonada
-  isCorazonada?: boolean         // este partido ES una corazonada del usuario
-  corazonadaEnabled?: boolean    // el torneo tiene corazonadas activas
-  corazonadaLocked?: boolean     // este partido ya empezó, no se puede quitar
-  corazonadaCount?: number       // cuántas corazonadas tiene asignadas el usuario (0-3)
-  corazonadaLockedCount?: number // cuántas ya se jugaron y no se pueden cambiar
+  isCorazonada?: boolean       // este partido ES la corazonada del grupo
+  corazonadaEnabled?: boolean  // el torneo tiene corazonadas activas
+  corazonadaLocked?: boolean   // ya empezó el 1er partido del grupo → no se puede cambiar
   ptsCorazonadaBonus?: number
   onAddCorazonada?: () => void
   onRemoveCorazonada?: () => void
@@ -75,7 +73,7 @@ function decodeOutcome(h: number, a: number): Outcome1X2 {
   return 'draw'
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, corazonadaCount = 0, corazonadaLockedCount = 0, ptsCorazonadaBonus = 5, onAddCorazonada, onRemoveCorazonada }: MatchCardProps) {
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, ptsCorazonadaBonus = 5, onAddCorazonada, onRemoveCorazonada }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -488,54 +486,43 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
           <p className="text-[10px] text-white/25 text-right italic">Pronóstico cerrado</p>
         )}
 
-        {/* Corazonada button */}
-        {corazonadaEnabled && match.status !== 'finished' && (() => {
-          const slotsLeft = 3 - corazonadaCount  // cuántas más se pueden asignar
-          const remainingActive = 3 - corazonadaLockedCount  // cuántas siguen en juego
-
-          if (isCorazonada) {
-            return (
-              <div className="pt-1.5 border-t border-amber-500/15 mt-1.5">
-                {corazonadaLocked ? (
-                  <p className="text-center text-xs text-amber-400/50 font-medium">
-                    💛 Corazonada jugada · quedan {remainingActive - 1} en juego
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onRemoveCorazonada}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-red-400 transition-colors py-0.5"
-                  >
-                    💛 Corazonada elegida
-                    <span className="text-white/30 font-normal">· quitar</span>
-                  </button>
-                )}
-              </div>
-            )
-          }
-
-          if (locked) return null  // partido cerrado y no es corazonada → nada
-
-          if (slotsLeft > 0) {
-            return (
-              <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
+        {/* Corazonada — solo fase de grupos */}
+        {corazonadaEnabled && !!match.group_name && match.status !== 'finished' && (
+          <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
+            {isCorazonada ? (
+              corazonadaLocked ? (
+                <p className="text-center text-xs text-amber-400/60 font-medium">
+                  💛 Corazonada Grupo {match.group_name} — en juego
+                </p>
+              ) : (
                 <button
                   type="button"
-                  onClick={onAddCorazonada}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
+                  onClick={onRemoveCorazonada}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors py-0.5"
                 >
-                  <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
-                  <span>
-                    Corazonada
-                    <span className="text-white/20 group-hover:text-amber-400/50"> · {slotsLeft} disponible{slotsLeft > 1 ? 's' : ''} · +{ptsCorazonadaBonus} pts exacto</span>
-                  </span>
+                  💛 Corazonada Grupo {match.group_name}
+                  <span className="text-white/30 font-normal underline underline-offset-2">· cambiar</span>
                 </button>
-              </div>
-            )
-          }
-
-          return null  // 3 corazonadas ya asignadas → no mostrar en partidos que no son corazonada
-        })()}
+              )
+            ) : corazonadaLocked ? (
+              <p className="text-center text-[10px] text-white/20 italic">
+                Corazonada del Grupo {match.group_name} cerrada
+              </p>
+            ) : locked ? null : (
+              <button
+                type="button"
+                onClick={onAddCorazonada}
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
+              >
+                <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
+                <span className="group-hover:text-amber-300 transition-colors">
+                  Corazonada Grupo {match.group_name}
+                  <span className="text-white/20 group-hover:text-amber-400/50"> (+{ptsCorazonadaBonus} pts si exacto)</span>
+                </span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </Card>
 

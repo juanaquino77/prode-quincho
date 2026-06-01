@@ -107,6 +107,7 @@ export interface Corazonada {
   user_id: string
   tournament_id: string
   match_id: string
+  group_name: string | null   // grupo al que pertenece (A-L); null para fases eliminatorias
   points_earned: number
   created_at: string
   updated_at: string
