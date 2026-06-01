@@ -12,7 +12,7 @@ import { useCorazonadas, useAddCorazonada, useRemoveCorazonada } from '../hooks/
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName, cn, resolveMatches, isMatchLocked } from '../lib/utils'
+import { getStageName, cn, resolveMatches } from '../lib/utils'
 import type { Match, MatchStage, Tournament, PenaltyWinner } from '../types'
 
 const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
