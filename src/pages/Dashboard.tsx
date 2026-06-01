@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Trophy, Calendar, Users, Star, ArrowRight, Lock } from 'lucide-react'
+import { Trophy, Calendar, Users, Star, ArrowRight, Lock, AlertCircle } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
+import { useSpecialPredictions } from '../hooks/useSpecialPredictions'
 import { useTournamentStore } from '../store/tournamentStore'
 import { formatShortDate, resolveMatches } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
@@ -40,6 +41,16 @@ export default function Dashboard() {
   const hasLive = matches.some((m) => m.status === 'live')
   const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
 
+  const hasSpecial = globalTournament?.has_special_predictions ?? false
+  const { data: specialPred } = useSpecialPredictions(
+    hasSpecial ? user?.id : undefined,
+    hasSpecial ? globalTournament?.id : undefined,
+  )
+  const specialNotFilled = hasSpecial && specialPred !== undefined &&
+    !(specialPred?.champion_team && specialPred?.top_scorer && specialPred?.best_player)
+  const SPECIAL_LOCK = new Date('2026-06-11T23:00:00Z')
+  const specialStillOpen = new Date() < SPECIAL_LOCK
+
   const upcoming = matches.filter((m) => m.status === 'upcoming').slice(0, 3)
   const live = matches.filter((m) => m.status === 'live')
   const top3 = leaderboard?.slice(0, 3) ?? []
@@ -54,6 +65,20 @@ export default function Dashboard() {
         </h1>
         <p className="text-white/50 mt-0.5">Mundial 2026 · Club Unión de Mar del Plata</p>
       </div>
+
+      {/* Special predictions banner */}
+      {specialNotFilled && specialStillOpen && (
+        <Link to="/predicciones">
+          <div className="mb-5 flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 hover:bg-amber-500/15 transition-colors">
+            <AlertCircle size={18} className="text-amber-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-300">¡Completá tus predicciones especiales!</p>
+              <p className="text-xs text-amber-400/70 mt-0.5">Elegí campeón, goleador y mejor jugador antes del 11 de junio.</p>
+            </div>
+            <ArrowRight size={15} className="text-amber-400 shrink-0" />
+          </div>
+        </Link>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

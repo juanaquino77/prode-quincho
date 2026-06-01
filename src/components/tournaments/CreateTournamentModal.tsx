@@ -21,6 +21,7 @@ const schema = z.object({
   competition: z.string().min(1),
   entry_fee: z.coerce.number().min(0, 'Debe ser mayor o igual a 0'),
   tournament_type_id: z.string().uuid('Seleccioná un tipo de torneo'),
+  has_special_predictions: z.boolean().default(false),
 })
 type FormData = z.infer<typeof schema>
 
@@ -33,16 +34,21 @@ interface Props {
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '' },
+    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '', has_special_predictions: false },
   })
   const createTournament = useCreateTournament()
   const { data: types = [], isLoading: typesLoading } = useTournamentTypesPublic()
   const [created, setCreated] = useState<Tournament | null>(null)
   const [copied, setCopied] = useState(false)
   const selectedTypeId = watch('tournament_type_id')
+  const hasSpecialPredictions = watch('has_special_predictions')
 
   async function onSubmit(data: FormData) {
-    const t = await createTournament.mutateAsync({ ...data, created_by: userId })
+    const t = await createTournament.mutateAsync({
+      ...data,
+      created_by: userId,
+      has_special_predictions: data.has_special_predictions,
+    })
     setCreated(t)
   }
 
@@ -118,6 +124,26 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
               <p className="text-xs text-red-400">{errors.tournament_type_id.message}</p>
             )}
           </div>
+
+          {/* Toggle predicciones especiales */}
+          <button
+            type="button"
+            onClick={() => setValue('has_special_predictions', !hasSpecialPredictions)}
+            className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 transition-all text-left ${
+              hasSpecialPredictions
+                ? 'border-amber-500/40 bg-amber-500/10'
+                : 'border-union-blue/20 bg-union-navy-light hover:border-union-blue/40'
+            }`}
+          >
+            <Star size={16} className={hasSpecialPredictions ? 'text-amber-400 shrink-0' : 'text-white/30 shrink-0'} />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white">Predicciones especiales</p>
+              <p className="text-xs text-white/40 mt-0.5">Campeón, goleador y mejor jugador del torneo</p>
+            </div>
+            <div className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${hasSpecialPredictions ? 'bg-amber-500' : 'bg-white/10'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${hasSpecialPredictions ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </div>
+          </button>
 
           <Button type="submit" loading={createTournament.isPending} className="w-full">
             Crear torneo

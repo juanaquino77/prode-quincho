@@ -88,10 +88,26 @@ export interface Tournament {
   tournament_type_id: string | null
   prediction_lock_hours: number
   show_rival_predictions: ShowRivalPredictions
+  has_special_predictions: boolean
+  actual_champion?: string | null
+  actual_top_scorer?: string | null
+  actual_best_player?: string | null
   created_at: string
   member_count?: number
   user_joined?: boolean
   user_paid?: boolean
+}
+
+export interface SpecialPrediction {
+  id: string
+  user_id: string
+  tournament_id: string
+  champion_team: string | null
+  top_scorer: string | null
+  best_player: string | null
+  points_earned: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Payment {

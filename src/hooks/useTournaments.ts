@@ -76,6 +76,7 @@ export function useCreateTournament() {
       tournament_type_id: string
       created_by: string
       competition: string
+      has_special_predictions?: boolean
     }) => {
       const { data, error } = await supabase.rpc('create_tournament', {
         p_name: t.name,
@@ -85,7 +86,15 @@ export function useCreateTournament() {
         p_created_by: t.created_by,
       })
       if (error) throw error
-      return data as Tournament
+      const tournament = data as Tournament
+      // Persist has_special_predictions if enabled (default is false in DB)
+      if (t.has_special_predictions) {
+        await supabase
+          .from('tournaments')
+          .update({ has_special_predictions: true })
+          .eq('id', tournament.id)
+      }
+      return tournament
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tournaments'] })

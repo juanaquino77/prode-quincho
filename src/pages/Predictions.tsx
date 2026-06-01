@@ -4,8 +4,10 @@ import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle, Save } from 'lu
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
 import { Button } from '../components/ui/Button'
+import { SpecialPredictionsCard } from '../components/predictions/SpecialPredictionsCard'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions, useUpsertPrediction } from '../hooks/usePredictions'
+import { useSpecialPredictions, useUpsertSpecialPrediction } from '../hooks/useSpecialPredictions'
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
@@ -51,6 +53,13 @@ export default function Predictions() {
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
   const createPayment = useCreatePayment()
   const upsert = useUpsertPrediction()
+
+  const hasSpecial = selectedTournament?.has_special_predictions ?? false
+  const { data: specialPred } = useSpecialPredictions(
+    hasSpecial ? user?.id : undefined,
+    hasSpecial ? selectedTournament?.id : undefined,
+  )
+  const upsertSpecial = useUpsertSpecialPrediction()
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
@@ -333,6 +342,19 @@ export default function Predictions() {
             <span className="text-sm font-semibold text-union-blue">{selectedTournament.name}</span>
           </div>
         )
+      )}
+
+      {/* Special predictions */}
+      {hasSpecial && selectedTournament && user && (
+        <SpecialPredictionsCard
+          tournamentId={selectedTournament.id}
+          userId={user.id}
+          existing={specialPred}
+          onSave={async (data) => {
+            await upsertSpecial.mutateAsync({ user_id: user.id, tournament_id: selectedTournament.id, ...data })
+          }}
+          isSaving={upsertSpecial.isPending}
+        />
       )}
 
       {/* Stage tabs */}

@@ -157,3 +157,13 @@ export const KNOCKOUT_PLACEHOLDER_MATCHES: MatchSeed[] = [
 ]
 
 export const ALL_MATCHES = [...GROUP_STAGE_MATCHES, ...KNOCKOUT_PLACEHOLDER_MATCHES]
+
+// Lista de todos los equipos del Mundial 2026 (para el selector de campeón)
+export const WC2026_TEAMS: { name: string; flag: string }[] = Array.from(
+  new Map(
+    GROUP_STAGE_MATCHES.flatMap((m) => [
+      { name: m.home_team, flag: m.home_flag },
+      { name: m.away_team, flag: m.away_flag },
+    ]).map((t) => [t.name, t])
+  ).values()
+).sort((a, b) => a.name.localeCompare(b.name, 'es'))
