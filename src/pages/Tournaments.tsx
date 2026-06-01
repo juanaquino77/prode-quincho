@@ -67,7 +67,7 @@ function usePredictionCompletion(
 
 // ─── Page ─────────────────────────────────────────────────────
 export default function Tournaments() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const isAdmin = useIsAdmin()
   const navigate = useNavigate()
   const { data: myTournaments, isLoading } = useUserTournaments(user?.id)
@@ -80,7 +80,7 @@ export default function Tournaments() {
   const globalWithMembership = myTournaments?.find((t) => t.type === 'global')
   const globalForCard = globalWithMembership ?? globalTournament
 
-  const globalPaid = globalWithMembership?.user_paid === true
+  const globalPaid = globalWithMembership?.user_paid === true || profile?.free_pass === true
   const globalRequiresPayment = (globalTournament?.entry_fee ?? 0) > 0
 
   function handleCreate() {
