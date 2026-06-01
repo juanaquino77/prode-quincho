@@ -8,10 +8,11 @@ import { SpecialPredictionsCard } from '../components/predictions/SpecialPredict
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions, useUpsertPrediction } from '../hooks/usePredictions'
 import { useSpecialPredictions, useUpsertSpecialPrediction } from '../hooks/useSpecialPredictions'
+import { useCorazonada, useSetCorazonada, useClearCorazonada } from '../hooks/useCorazonada'
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
-import { getStageName, cn, resolveMatches } from '../lib/utils'
+import { getStageName, cn, resolveMatches, isMatchLocked } from '../lib/utils'
 import type { Match, MatchStage, Tournament, PenaltyWinner } from '../types'
 
 const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
@@ -60,6 +61,24 @@ export default function Predictions() {
     hasSpecial ? selectedTournament?.id : undefined,
   )
   const upsertSpecial = useUpsertSpecialPrediction()
+
+  // ── Corazonada ───────────────────────────────────────────────
+  const hasCorazonada = selectedTournament?.has_corazonada ?? false
+  const ptsCorazonadaBonus = selectedTournament?.pts_corazonada_bonus ?? 5
+  const { data: corazonada } = useCorazonada(
+    hasCorazonada ? user?.id : undefined,
+    hasCorazonada ? selectedTournament?.id : undefined,
+  )
+  const setCorazonada = useSetCorazonada()
+  const clearCorazonada = useClearCorazonada()
+
+  // La corazonada actual está "cerrada" si su partido ya empezó
+  const corazonadaMatchLockAt = corazonada
+    ? (matches ?? []).find((m) => m.id === corazonada.match_id)
+    : null
+  const corazonadaIsLocked = corazonadaMatchLockAt
+    ? isMatchLocked(corazonadaMatchLockAt)
+    : false
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
@@ -427,6 +446,12 @@ export default function Predictions() {
                 rules={selectedTournament!.rules}
                 batchMode
                 onBatchChange={handleBatchChange}
+                corazonadaEnabled={hasCorazonada}
+                isCorazonada={corazonada?.match_id === match.id}
+                corazonadaLocked={corazonadaIsLocked && corazonada?.match_id !== match.id}
+                ptsCorazonadaBonus={ptsCorazonadaBonus}
+                onSetCorazonada={() => setCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+                onClearCorazonada={() => clearCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id })}
               />
             ))}
           </div>
@@ -458,6 +483,12 @@ export default function Predictions() {
               highlighted={match.id === highlightMatchId}
               requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
               rules={selectedTournament!.rules}
+              corazonadaEnabled={hasCorazonada}
+              isCorazonada={corazonada?.match_id === match.id}
+              corazonadaLocked={corazonadaIsLocked && corazonada?.match_id !== match.id}
+              ptsCorazonadaBonus={ptsCorazonadaBonus}
+              onSetCorazonada={() => setCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+              onClearCorazonada={() => clearCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id })}
             />
           ))}
         </div>

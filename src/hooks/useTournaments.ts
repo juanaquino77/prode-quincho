@@ -77,6 +77,7 @@ export function useCreateTournament() {
       created_by: string
       competition: string
       has_special_predictions?: boolean
+      has_corazonada?: boolean
     }) => {
       const { data, error } = await supabase.rpc('create_tournament', {
         p_name: t.name,
@@ -87,12 +88,12 @@ export function useCreateTournament() {
       })
       if (error) throw error
       const tournament = data as Tournament
-      // Persist has_special_predictions if enabled (default is false in DB)
-      if (t.has_special_predictions) {
-        await supabase
-          .from('tournaments')
-          .update({ has_special_predictions: true })
-          .eq('id', tournament.id)
+      // Persist feature flags if enabled (default is false in DB)
+      const updates: Record<string, boolean> = {}
+      if (t.has_special_predictions) updates.has_special_predictions = true
+      if (t.has_corazonada) updates.has_corazonada = true
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('tournaments').update(updates).eq('id', tournament.id)
       }
       return tournament
     },

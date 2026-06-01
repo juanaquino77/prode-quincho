@@ -22,6 +22,7 @@ const schema = z.object({
   entry_fee: z.coerce.number().min(0, 'Debe ser mayor o igual a 0'),
   tournament_type_id: z.string().uuid('Seleccioná un tipo de torneo'),
   has_special_predictions: z.boolean().default(false),
+  has_corazonada: z.boolean().default(false),
 })
 type FormData = z.infer<typeof schema>
 
@@ -34,7 +35,7 @@ interface Props {
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '', has_special_predictions: false },
+    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '', has_special_predictions: false, has_corazonada: false },
   })
   const createTournament = useCreateTournament()
   const { data: types = [], isLoading: typesLoading } = useTournamentTypesPublic()
@@ -42,12 +43,14 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const [copied, setCopied] = useState(false)
   const selectedTypeId = watch('tournament_type_id')
   const hasSpecialPredictions = watch('has_special_predictions')
+  const hasCorazonada = watch('has_corazonada')
 
   async function onSubmit(data: FormData) {
     const t = await createTournament.mutateAsync({
       ...data,
       created_by: userId,
       has_special_predictions: data.has_special_predictions,
+      has_corazonada: data.has_corazonada,
     })
     setCreated(t)
   }
@@ -142,6 +145,26 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
             </div>
             <div className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${hasSpecialPredictions ? 'bg-amber-500' : 'bg-white/10'}`}>
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${hasSpecialPredictions ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </div>
+          </button>
+
+          {/* Toggle corazonada */}
+          <button
+            type="button"
+            onClick={() => setValue('has_corazonada', !hasCorazonada)}
+            className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 transition-all text-left ${
+              hasCorazonada
+                ? 'border-amber-500/40 bg-amber-500/10'
+                : 'border-union-blue/20 bg-union-navy-light hover:border-union-blue/40'
+            }`}
+          >
+            <span className={`text-lg shrink-0 ${hasCorazonada ? '' : 'opacity-30'}`}>💛</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white">Corazonada</p>
+              <p className="text-xs text-white/40 mt-0.5">Un partido especial por usuario con puntos bonus</p>
+            </div>
+            <div className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${hasCorazonada ? 'bg-amber-500' : 'bg-white/10'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${hasCorazonada ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
           </button>
 

@@ -60,7 +60,7 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Predicciones Especiales</p>
-            <p className="text-[11px] text-white/40">Solo para el torneo global · Mundial 2026</p>
+            <p className="text-[11px] text-white/40">2 pts por acierto · Campeón · Goleador · MVP</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -83,9 +83,9 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
       <div className="space-y-4">
         {/* Campeón */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-white/60 mb-1.5">
-            <Trophy size={12} className="text-amber-400" />
-            Campeón del Mundial
+          <label className="flex items-center justify-between text-xs font-medium text-white/60 mb-1.5">
+            <span className="flex items-center gap-1.5"><Trophy size={12} className="text-amber-400" />Campeón del Mundial</span>
+            <span className="text-amber-400/60 font-bold">+2 pts</span>
           </label>
           <TeamSelect
             value={champion}
@@ -96,9 +96,9 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
 
         {/* Goleador */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-white/60 mb-1.5">
-            <Zap size={12} className="text-amber-400" />
-            Goleador del torneo
+          <label className="flex items-center justify-between text-xs font-medium text-white/60 mb-1.5">
+            <span className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" />Goleador del torneo</span>
+            <span className="text-amber-400/60 font-bold">+2 pts</span>
           </label>
           <PlayerCombobox
             value={topScorer}
@@ -110,9 +110,9 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
 
         {/* Mejor jugador */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-white/60 mb-1.5">
-            <Star size={12} className="text-amber-400" />
-            Mejor jugador del torneo
+          <label className="flex items-center justify-between text-xs font-medium text-white/60 mb-1.5">
+            <span className="flex items-center gap-1.5"><Star size={12} className="text-amber-400" />Mejor jugador del torneo</span>
+            <span className="text-amber-400/60 font-bold">+2 pts</span>
           </label>
           <PlayerCombobox
             value={bestPlayer}

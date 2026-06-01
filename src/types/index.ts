@@ -54,6 +54,8 @@ export const DEFAULT_RULES: TournamentRules = {
   requires_exact_score: true,
 }
 
+export const SPECIAL_PREDICTION_POINTS = 2  // pts por cada acierto en predicciones especiales
+
 export interface TournamentTypePublic {
   id: string
   name: string
@@ -92,10 +94,22 @@ export interface Tournament {
   actual_champion?: string | null
   actual_top_scorer?: string | null
   actual_best_player?: string | null
+  has_corazonada: boolean
+  pts_corazonada_bonus: number
   created_at: string
   member_count?: number
   user_joined?: boolean
   user_paid?: boolean
+}
+
+export interface Corazonada {
+  id: string
+  user_id: string
+  tournament_id: string
+  match_id: string
+  points_earned: number
+  created_at: string
+  updated_at: string
 }
 
 export interface SpecialPrediction {

@@ -29,6 +29,13 @@ interface MatchCardProps {
   /** Modo batch: sin botón individual; inputs siempre editables; notifica cambios al padre */
   batchMode?: boolean
   onBatchChange?: (matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => void
+  // Corazonada
+  isCorazonada?: boolean
+  corazonadaEnabled?: boolean
+  corazonadaLocked?: boolean   // ya hay una corazonada en un partido que empezó → no se puede cambiar
+  ptsCorazonadaBonus?: number
+  onSetCorazonada?: () => void
+  onClearCorazonada?: () => void
 }
 
 // ── Countdown ──────────────────────────────────────────────────
@@ -66,7 +73,7 @@ function decodeOutcome(h: number, a: number): Outcome1X2 {
   return 'draw'
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange }: MatchCardProps) {
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, ptsCorazonadaBonus = 5, onSetCorazonada, onClearCorazonada }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -195,7 +202,8 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
     <div ref={cardRef} className="h-full">
     <Card className={cn(
       'hover:border-union-blue/40 transition-colors h-full flex flex-col',
-      highlighted && 'ring-2 ring-union-blue shadow-[0_0_24px_rgba(0,168,222,0.25)]'
+      highlighted && 'ring-2 ring-union-blue shadow-[0_0_24px_rgba(0,168,222,0.25)]',
+      isCorazonada && 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
     )}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -203,6 +211,11 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
           {match.group_name && <Badge variant="blue">Grupo {match.group_name}</Badge>}
           {isKnockout && !match.group_name && <Badge variant="gray">Eliminatoria</Badge>}
           {statusBadge}
+          {isCorazonada && (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+              💛 Corazonada
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-xs text-white/40">
           <Clock size={12} />
@@ -471,6 +484,43 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
         )}
         {locked && prediction && (
           <p className="text-[10px] text-white/25 text-right italic">Pronóstico cerrado</p>
+        )}
+
+        {/* Corazonada button */}
+        {corazonadaEnabled && match.status !== 'finished' && (
+          <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
+            {isCorazonada ? (
+              locked ? (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400/60 font-medium">
+                  💛 <span>Tu Corazonada está jugada</span>
+                  {prediction && isCorazonada && (
+                    <span className="ml-auto text-amber-400 font-bold">+{ptsCorazonadaBonus} pts bonus</span>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClearCorazonada}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors py-0.5"
+                >
+                  💛 Corazonada elegida · <span className="underline underline-offset-2">Cambiar</span>
+                </button>
+              )
+            ) : corazonadaLocked ? (
+              <p className="text-center text-[10px] text-white/25 italic">
+                Tu Corazonada ya está en juego
+              </p>
+            ) : !locked ? (
+              <button
+                type="button"
+                onClick={onSetCorazonada}
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
+              >
+                <span className="opacity-50 group-hover:opacity-100 transition-opacity">💛</span>
+                <span>Marcar como Corazonada <span className="text-white/20">(+{ptsCorazonadaBonus} pts si acertás)</span></span>
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
     </Card>
