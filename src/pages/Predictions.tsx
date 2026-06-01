@@ -135,7 +135,7 @@ export default function Predictions() {
 
   // Focus primer input y resetear warnings al cambiar de grupo
   useEffect(() => {
-    if (resolvedStage !== 'group') return
+    if (activeStage !== 'group') return
     setCorazonadaWarning(false)
     setEmptyWarning([])
     const timer = setTimeout(() => {
@@ -143,7 +143,7 @@ export default function Predictions() {
       firstInput?.focus()
     }, 50)
     return () => clearTimeout(timer)
-  }, [activeGroup, resolvedStage])
+  }, [activeGroup, activeStage])
 
   const handleBatchChange = useCallback((matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => {
     setBatchValues((prev) => ({ ...prev, [matchId]: { home, away, penalty } }))
