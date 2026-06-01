@@ -8,7 +8,7 @@ import { SpecialPredictionsCard } from '../components/predictions/SpecialPredict
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions, useUpsertPrediction } from '../hooks/usePredictions'
 import { useSpecialPredictions, useUpsertSpecialPrediction } from '../hooks/useSpecialPredictions'
-import { useCorazonada, useSetCorazonada, useClearCorazonada } from '../hooks/useCorazonada'
+import { useCorazonadas, useAddCorazonada, useRemoveCorazonada } from '../hooks/useCorazonada'
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
 import { useAuthStore } from '../store/authStore'
 import { useTournamentStore } from '../store/tournamentStore'
@@ -62,23 +62,23 @@ export default function Predictions() {
   )
   const upsertSpecial = useUpsertSpecialPrediction()
 
-  // ── Corazonada ───────────────────────────────────────────────
+  // ── Corazonadas (máx 3) ─────────────────────────────────────
   const hasCorazonada = selectedTournament?.has_corazonada ?? false
   const ptsCorazonadaBonus = selectedTournament?.pts_corazonada_bonus ?? 5
-  const { data: corazonada } = useCorazonada(
+  const { data: corazonadas = [] } = useCorazonadas(
     hasCorazonada ? user?.id : undefined,
     hasCorazonada ? selectedTournament?.id : undefined,
   )
-  const setCorazonada = useSetCorazonada()
-  const clearCorazonada = useClearCorazonada()
+  const addCorazonada = useAddCorazonada()
+  const removeCorazonada = useRemoveCorazonada()
 
-  // La corazonada actual está "cerrada" si su partido ya empezó
-  const corazonadaMatchLockAt = corazonada
-    ? (matches ?? []).find((m) => m.id === corazonada.match_id)
-    : null
-  const corazonadaIsLocked = corazonadaMatchLockAt
-    ? isMatchLocked(corazonadaMatchLockAt)
-    : false
+  const corazonadaMatchIds = new Set(corazonadas.map((c) => c.match_id))
+
+  // Cuántas corazonadas ya se jugaron (partido cerrado) → no se pueden quitar
+  const corazonadaLockedCount = corazonadas.filter((c) => {
+    const m = (matches ?? []).find((m) => m.id === c.match_id)
+    return m ? isMatchLocked(m) : false
+  }).length
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
 
@@ -447,11 +447,13 @@ export default function Predictions() {
                 batchMode
                 onBatchChange={handleBatchChange}
                 corazonadaEnabled={hasCorazonada}
-                isCorazonada={corazonada?.match_id === match.id}
-                corazonadaLocked={corazonadaIsLocked && corazonada?.match_id !== match.id}
+                isCorazonada={corazonadaMatchIds.has(match.id)}
+                corazonadaLocked={corazonadaMatchIds.has(match.id) && isMatchLocked(match)}
+                corazonadaCount={corazonadas.length}
+                corazonadaLockedCount={corazonadaLockedCount}
                 ptsCorazonadaBonus={ptsCorazonadaBonus}
-                onSetCorazonada={() => setCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
-                onClearCorazonada={() => clearCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id })}
+                onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+                onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
               />
             ))}
           </div>
@@ -484,11 +486,13 @@ export default function Predictions() {
               requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
               rules={selectedTournament!.rules}
               corazonadaEnabled={hasCorazonada}
-              isCorazonada={corazonada?.match_id === match.id}
-              corazonadaLocked={corazonadaIsLocked && corazonada?.match_id !== match.id}
+              isCorazonada={corazonadaMatchIds.has(match.id)}
+              corazonadaLocked={corazonadaMatchIds.has(match.id) && isMatchLocked(match)}
+              corazonadaCount={corazonadas.length}
+              corazonadaLockedCount={corazonadaLockedCount}
               ptsCorazonadaBonus={ptsCorazonadaBonus}
-              onSetCorazonada={() => setCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
-              onClearCorazonada={() => clearCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id })}
+              onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+              onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
             />
           ))}
         </div>

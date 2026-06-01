@@ -2,9 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Corazonada } from '../types'
 
-export function useCorazonada(userId: string | undefined, tournamentId: string | undefined) {
+export const CORAZONADA_MAX = 3
+
+/** Devuelve todas las corazonadas del usuario para un torneo (máximo 3) */
+export function useCorazonadas(userId: string | undefined, tournamentId: string | undefined) {
   return useQuery({
-    queryKey: ['corazonada', userId, tournamentId],
+    queryKey: ['corazonadas', userId, tournamentId],
     enabled: !!userId && !!tournamentId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -12,14 +15,15 @@ export function useCorazonada(userId: string | undefined, tournamentId: string |
         .select('*')
         .eq('user_id', userId!)
         .eq('tournament_id', tournamentId!)
-        .maybeSingle()
+        .order('created_at', { ascending: true })
       if (error) throw error
-      return data as Corazonada | null
+      return data as Corazonada[]
     },
   })
 }
 
-export function useSetCorazonada() {
+/** Agrega un partido como corazonada (máximo 3 por torneo, validado en DB) */
+export function useAddCorazonada() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: {
@@ -29,31 +33,37 @@ export function useSetCorazonada() {
     }) => {
       const { data, error } = await supabase
         .from('corazonadas')
-        .upsert(payload, { onConflict: 'user_id,tournament_id' })
+        .insert(payload)
         .select()
         .single()
       if (error) throw error
       return data as Corazonada
     },
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ['corazonada', vars.user_id, vars.tournament_id] })
+      qc.invalidateQueries({ queryKey: ['corazonadas', vars.user_id, vars.tournament_id] })
     },
   })
 }
 
-export function useClearCorazonada() {
+/** Quita la corazonada de un partido específico */
+export function useRemoveCorazonada() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { user_id: string; tournament_id: string }) => {
+    mutationFn: async (payload: {
+      user_id: string
+      tournament_id: string
+      match_id: string
+    }) => {
       const { error } = await supabase
         .from('corazonadas')
         .delete()
         .eq('user_id', payload.user_id)
         .eq('tournament_id', payload.tournament_id)
+        .eq('match_id', payload.match_id)
       if (error) throw error
     },
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ['corazonada', vars.user_id, vars.tournament_id] })
+      qc.invalidateQueries({ queryKey: ['corazonadas', vars.user_id, vars.tournament_id] })
     },
   })
 }

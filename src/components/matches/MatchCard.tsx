@@ -30,12 +30,14 @@ interface MatchCardProps {
   batchMode?: boolean
   onBatchChange?: (matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => void
   // Corazonada
-  isCorazonada?: boolean
-  corazonadaEnabled?: boolean
-  corazonadaLocked?: boolean   // ya hay una corazonada en un partido que empezó → no se puede cambiar
+  isCorazonada?: boolean         // este partido ES una corazonada del usuario
+  corazonadaEnabled?: boolean    // el torneo tiene corazonadas activas
+  corazonadaLocked?: boolean     // este partido ya empezó, no se puede quitar
+  corazonadaCount?: number       // cuántas corazonadas tiene asignadas el usuario (0-3)
+  corazonadaLockedCount?: number // cuántas ya se jugaron y no se pueden cambiar
   ptsCorazonadaBonus?: number
-  onSetCorazonada?: () => void
-  onClearCorazonada?: () => void
+  onAddCorazonada?: () => void
+  onRemoveCorazonada?: () => void
 }
 
 // ── Countdown ──────────────────────────────────────────────────
@@ -73,7 +75,7 @@ function decodeOutcome(h: number, a: number): Outcome1X2 {
   return 'draw'
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, ptsCorazonadaBonus = 5, onSetCorazonada, onClearCorazonada }: MatchCardProps) {
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, corazonadaCount = 0, corazonadaLockedCount = 0, ptsCorazonadaBonus = 5, onAddCorazonada, onRemoveCorazonada }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -487,41 +489,53 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
         )}
 
         {/* Corazonada button */}
-        {corazonadaEnabled && match.status !== 'finished' && (
-          <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
-            {isCorazonada ? (
-              locked ? (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400/60 font-medium">
-                  💛 <span>Tu Corazonada está jugada</span>
-                  {prediction && isCorazonada && (
-                    <span className="ml-auto text-amber-400 font-bold">+{ptsCorazonadaBonus} pts bonus</span>
-                  )}
-                </div>
-              ) : (
+        {corazonadaEnabled && match.status !== 'finished' && (() => {
+          const slotsLeft = 3 - corazonadaCount  // cuántas más se pueden asignar
+          const remainingActive = 3 - corazonadaLockedCount  // cuántas siguen en juego
+
+          if (isCorazonada) {
+            return (
+              <div className="pt-1.5 border-t border-amber-500/15 mt-1.5">
+                {corazonadaLocked ? (
+                  <p className="text-center text-xs text-amber-400/50 font-medium">
+                    💛 Corazonada jugada · quedan {remainingActive - 1} en juego
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onRemoveCorazonada}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-red-400 transition-colors py-0.5"
+                  >
+                    💛 Corazonada elegida
+                    <span className="text-white/30 font-normal">· quitar</span>
+                  </button>
+                )}
+              </div>
+            )
+          }
+
+          if (locked) return null  // partido cerrado y no es corazonada → nada
+
+          if (slotsLeft > 0) {
+            return (
+              <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
                 <button
                   type="button"
-                  onClick={onClearCorazonada}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors py-0.5"
+                  onClick={onAddCorazonada}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
                 >
-                  💛 Corazonada elegida · <span className="underline underline-offset-2">Cambiar</span>
+                  <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
+                  <span>
+                    Corazonada
+                    <span className="text-white/20 group-hover:text-amber-400/50"> · {slotsLeft} disponible{slotsLeft > 1 ? 's' : ''} · +{ptsCorazonadaBonus} pts exacto</span>
+                  </span>
                 </button>
-              )
-            ) : corazonadaLocked ? (
-              <p className="text-center text-[10px] text-white/25 italic">
-                Tu Corazonada ya está en juego
-              </p>
-            ) : !locked ? (
-              <button
-                type="button"
-                onClick={onSetCorazonada}
-                className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
-              >
-                <span className="opacity-50 group-hover:opacity-100 transition-opacity">💛</span>
-                <span>Marcar como Corazonada <span className="text-white/20">(+{ptsCorazonadaBonus} pts si acertás)</span></span>
-              </button>
-            ) : null}
-          </div>
-        )}
+              </div>
+            )
+          }
+
+          return null  // 3 corazonadas ya asignadas → no mostrar en partidos que no son corazonada
+        })()}
       </div>
     </Card>
 
