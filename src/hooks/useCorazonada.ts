@@ -20,7 +20,9 @@ export function useCorazonadas(userId: string | undefined, tournamentId: string 
   })
 }
 
-/** Marca un partido como corazonada de su grupo (upsert por grupo) */
+/** Marca un partido como corazonada de su grupo.
+ *  Borra la anterior del mismo grupo antes de insertar
+ *  (robusto ante constraints faltantes en la DB). */
 export function useAddCorazonada() {
   const qc = useQueryClient()
   return useMutation({
@@ -30,9 +32,19 @@ export function useAddCorazonada() {
       match_id: string
       group_name: string | null
     }) => {
+      // 1. Eliminar cualquier corazonada anterior del mismo grupo
+      if (payload.group_name) {
+        await supabase
+          .from('corazonadas')
+          .delete()
+          .eq('user_id', payload.user_id)
+          .eq('tournament_id', payload.tournament_id)
+          .eq('group_name', payload.group_name)
+      }
+      // 2. Insertar la nueva
       const { data, error } = await supabase
         .from('corazonadas')
-        .upsert(payload, { onConflict: 'user_id,tournament_id,group_name' })
+        .insert(payload)
         .select()
         .single()
       if (error) throw error

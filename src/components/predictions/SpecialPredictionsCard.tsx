@@ -17,6 +17,10 @@ interface Props {
 
 export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
   const isLocked = new Date() >= LOCK_DATE
+  const isFilled = !!(existing?.champion_team && existing?.top_scorer && existing?.best_player)
+
+  // Empieza colapsado; se abre automáticamente si no está completo y no está cerrado
+  const [open, setOpen] = useState(false)
 
   const [champion, setChampion] = useState(existing?.champion_team ?? '')
   const [topScorer, setTopScorer] = useState(existing?.top_scorer ?? '')
@@ -48,14 +52,16 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
     timeZone: 'America/Argentina/Buenos_Aires',
   }) + ' · 20:00 AR'
 
-  const isFilled = !!(existing?.champion_team && existing?.top_scorer && existing?.best_player)
-
   return (
     <Card className="mb-5 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header — botón acordeón */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+      >
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
             <Star size={16} className="text-amber-400" />
           </div>
           <div>
@@ -63,24 +69,20 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
             <p className="text-[11px] text-white/40">2 pts por acierto · Campeón · Goleador · MVP</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {isLocked ? (
-            <span className="flex items-center gap-1 text-xs text-red-400">
-              <Lock size={11} /> Cerradas
-            </span>
+            <span className="flex items-center gap-1 text-xs text-red-400"><Lock size={11} /> Cerradas</span>
           ) : isFilled ? (
-            <span className="flex items-center gap-1 text-xs text-green-400">
-              <CheckCircle2 size={12} /> Guardadas
-            </span>
+            <span className="flex items-center gap-1 text-xs text-green-400"><CheckCircle2 size={12} /> Guardadas</span>
           ) : (
-            <span className="text-[11px] text-amber-400/80">
-              Cierra {lockLabel}
-            </span>
+            <span className="text-[11px] text-amber-400/80">Cierra {lockLabel}</span>
           )}
+          <ChevronDown size={15} className={`text-white/30 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </div>
-      </div>
+      </button>
 
-      <div className="space-y-4">
+      {/* Contenido expandible */}
+      {open && <div className="space-y-4 mt-4">
         {/* Campeón */}
         <div>
           <label className="flex items-center justify-between text-xs font-medium text-white/60 mb-1.5">
@@ -136,7 +138,7 @@ export function SpecialPredictionsCard({ existing, onSave, isSaving }: Props) {
             ) : 'Guardar predicciones especiales'}
           </Button>
         )}
-      </div>
+      </div>}
     </Card>
   )
 }
