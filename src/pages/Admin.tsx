@@ -361,15 +361,7 @@ function MatchesTab() {
 // ─── Users tab ────────────────────────────────────────────────
 function UsersTab() {
   const { data: users, isLoading, error } = useAdminUsers()
-  const deleteUser = useAdminDeleteUser()
-  const toggleFreePass = useToggleFreePass()
-  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null)
-
-  async function handleDelete() {
-    if (!confirmDelete) return
-    await deleteUser.mutateAsync(confirmDelete.user_id)
-    setConfirmDelete(null)
-  }
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
 
   return (
     <>
@@ -388,7 +380,11 @@ function UsersTab() {
       ) : (
         <div className="space-y-2">
           {(users ?? []).map((u) => (
-            <Card key={u.user_id} className="flex items-center gap-3">
+            <Card
+              key={u.user_id}
+              className="flex items-center gap-3 cursor-pointer hover:border-union-blue/40 transition-colors"
+              onClick={() => setSelectedUser(u)}
+            >
               {/* Avatar */}
               <div className="w-9 h-9 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
                 {u.avatar_url ? (
@@ -402,19 +398,13 @@ function UsersTab() {
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-white truncate">
-                    {u.username ?? '—'}
-                  </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-white truncate">{u.username ?? '—'}</span>
                   {u.user_is_admin && (
-                    <Badge variant="blue">
-                      <ShieldAlert size={10} className="mr-1" />Admin
-                    </Badge>
+                    <Badge variant="blue"><ShieldAlert size={10} className="mr-1" />Admin</Badge>
                   )}
                   {u.free_pass && (
-                    <Badge variant="green">
-                      <Ticket size={10} className="mr-1" />Pase libre
-                    </Badge>
+                    <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>
                   )}
                 </div>
                 <p className="text-xs text-white/40 truncate">{u.email}</p>
@@ -425,50 +415,153 @@ function UsersTab() {
                 {new Date(u.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </span>
 
-              {/* Free pass toggle */}
-              {!u.user_is_admin && (
-                <button
-                  onClick={() => toggleFreePass.mutate({ userId: u.user_id, freePass: !u.free_pass })}
-                  className={`p-1.5 transition-colors shrink-0 ${u.free_pass ? 'text-green-400 hover:text-green-300' : 'text-white/30 hover:text-green-400'}`}
-                  title={u.free_pass ? 'Quitar pase libre' : 'Dar pase libre'}
-                >
-                  <Ticket size={15} />
-                </button>
-              )}
-
-              {/* Delete */}
-              {!u.user_is_admin && (
-                <button
-                  onClick={() => setConfirmDelete(u)}
-                  className="p-1.5 text-white/30 hover:text-red-400 transition-colors shrink-0"
-                  title="Eliminar usuario"
-                >
-                  <Trash2 size={15} />
-                </button>
-              )}
+              <span className="text-white/20 shrink-0">›</span>
             </Card>
           ))}
         </div>
       )}
 
-      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Eliminar usuario">
-        <p className="text-white/70 mb-1">
-          ¿Seguro que querés eliminar a{' '}
-          <span className="text-white font-semibold">{confirmDelete?.username ?? confirmDelete?.email}</span>?
-        </p>
-        <p className="text-white/40 text-xs mb-4">
-          Se eliminarán su cuenta, perfil y todos sus pronósticos. Esta acción no se puede deshacer.
-        </p>
-        <div className="flex gap-2">
-          <Button variant="danger" onClick={handleDelete} loading={deleteUser.isPending} className="flex-1">
-            Eliminar usuario
-          </Button>
-          <Button variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1">
-            Cancelar
-          </Button>
-        </div>
-      </Modal>
+      <UserActionsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
     </>
+  )
+}
+
+// ─── User actions modal ───────────────────────────────────────
+function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+  const { data: memberships, isLoading: loadingMemberships } = useAdminUserMemberships(user?.user_id ?? null)
+  const setMemberPaid = useAdminSetMemberPaid()
+  const toggleFreePass = useToggleFreePass()
+  const deleteUser = useAdminDeleteUser()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  function handleClose() {
+    setConfirmDelete(false)
+    onClose()
+  }
+
+  return (
+    <Modal open={!!user} onClose={handleClose} title="Gestionar usuario">
+      {user && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center gap-3 pb-3 border-b border-union-blue/15">
+            <div className="w-10 h-10 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-10 h-10 object-cover rounded-full" />
+              ) : (
+                <span className="text-sm font-bold text-union-blue">
+                  {(user.username ?? user.email ?? '?')[0].toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-white">{user.username ?? '—'}</span>
+                {user.user_is_admin && <Badge variant="blue"><ShieldAlert size={10} className="mr-1" />Admin</Badge>}
+                {user.free_pass && <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>}
+              </div>
+              <p className="text-xs text-white/40 truncate">{user.email}</p>
+            </div>
+          </div>
+
+          {/* Pase libre global */}
+          {!user.user_is_admin && (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white font-medium">Pase libre global</p>
+                <p className="text-xs text-white/40">Exime del pago en todos los torneos</p>
+              </div>
+              <button
+                onClick={() => toggleFreePass.mutate({ userId: user.user_id, freePass: !user.free_pass })}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  user.free_pass
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                )}
+              >
+                {user.free_pass ? '✓ Activo' : 'Inactivo'}
+              </button>
+            </div>
+          )}
+
+          {/* Freepass por torneo */}
+          <div className="border border-union-blue/20 rounded-xl p-3 space-y-2.5">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Pago por torneo</p>
+            {loadingMemberships ? (
+              <p className="text-white/30 text-xs">Cargando...</p>
+            ) : !memberships?.length ? (
+              <p className="text-white/30 text-xs">No está inscripto en ningún torneo</p>
+            ) : (
+              memberships.map((m) => (
+                <div key={m.tournament_id} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-sm text-white truncate block">{m.tournament_name}</span>
+                    <span className="text-[11px] text-white/30">
+                      {m.tournament_type === 'global' ? 'Global' : 'Amigos'}
+                      {m.entry_fee > 0 ? ` · $${m.entry_fee.toLocaleString('es-AR')}` : ' · Gratis'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: !m.paid })}
+                    disabled={setMemberPaid.isPending || m.entry_fee === 0}
+                    className={cn(
+                      'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                      m.entry_fee === 0
+                        ? 'bg-union-navy-light text-white/20 cursor-default'
+                        : m.paid
+                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                    )}
+                  >
+                    {m.entry_fee === 0 ? 'Gratis' : m.paid ? '✓ Pagado' : 'Sin pago'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Notificaciones — próximamente */}
+          <div className="border border-union-blue/10 rounded-xl p-3 space-y-2 opacity-40 pointer-events-none select-none">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Notificaciones (próximamente)</p>
+            <div className="flex gap-2">
+              <button className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/40 text-xs font-medium">✉️ Enviar email</button>
+              <button className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/40 text-xs font-medium">💬 WhatsApp</button>
+            </div>
+          </div>
+
+          {/* Zona peligrosa */}
+          {!user.user_is_admin && (
+            <div className="border border-red-500/20 rounded-xl p-3">
+              <p className="text-xs font-semibold text-red-400/60 uppercase tracking-wider mb-2">Zona peligrosa</p>
+              {confirmDelete ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-white/60">
+                    ¿Seguro? Se eliminarán la cuenta, perfil y todos los pronósticos de{' '}
+                    <span className="text-white font-semibold">{user.username ?? user.email}</span>.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="danger"
+                      onClick={async () => { await deleteUser.mutateAsync(user.user_id); handleClose() }}
+                      loading={deleteUser.isPending}
+                      className="flex-1"
+                    >
+                      Eliminar
+                    </Button>
+                    <Button variant="secondary" onClick={() => setConfirmDelete(false)} className="flex-1">Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="danger" onClick={() => setConfirmDelete(true)} className="w-full">
+                  <Trash2 size={14} className="mr-1.5" />Eliminar usuario
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
   )
 }
 
@@ -815,6 +908,81 @@ interface AdminTournament {
   created_at: string
 }
 
+interface AdminMember {
+  user_id: string
+  username: string | null
+  full_name: string | null
+  avatar_url: string | null
+  paid: boolean
+  joined_at: string
+}
+
+interface AdminUserMembership {
+  tournament_id: string
+  tournament_name: string
+  tournament_type: string
+  entry_fee: number
+  paid: boolean
+  joined_at: string
+}
+
+function useAdminTournamentMembers(tournamentId: string | null) {
+  return useQuery({
+    queryKey: ['admin-tournament-members', tournamentId],
+    enabled: !!tournamentId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_tournament_members', { p_tournament_id: tournamentId })
+      if (error) throw error
+      return (data ?? []) as AdminMember[]
+    },
+  })
+}
+
+function useAdminSetMemberPaid() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, tournamentId, paid }: { userId: string; tournamentId: string; paid: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_member_paid', {
+        p_user_id: userId,
+        p_tournament_id: tournamentId,
+        p_paid: paid,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, { tournamentId, userId }) => {
+      qc.invalidateQueries({ queryKey: ['admin-tournament-members', tournamentId] })
+      qc.invalidateQueries({ queryKey: ['admin-user-memberships', userId] })
+      qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] })
+    },
+  })
+}
+
+function useAdminUserMemberships(userId: string | null) {
+  return useQuery({
+    queryKey: ['admin-user-memberships', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_user_memberships', { p_user_id: userId })
+      if (error) throw error
+      return (data ?? []) as AdminUserMembership[]
+    },
+  })
+}
+
+function useAdminUpdateTournamentName() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ tournamentId, name }: { tournamentId: string; name: string }) => {
+      const { error } = await supabase.rpc('admin_update_tournament_name', {
+        p_tournament_id: tournamentId,
+        p_name: name,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] }),
+  })
+}
+
 function useFriendTournaments() {
   return useQuery({
     queryKey: ['admin-friend-tournaments'],
@@ -864,8 +1032,24 @@ function useFriendTournaments() {
 
 function TorneosTab() {
   const { data: tournaments, isLoading } = useFriendTournaments()
+  const updateName = useAdminUpdateTournamentName()
+  const [membersOf, setMembersOf] = useState<AdminTournament | null>(null)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   const totalRecaudado = (tournaments ?? []).reduce((sum, t) => sum + t.total_collected, 0)
+
+  function startEdit(e: React.MouseEvent, t: AdminTournament) {
+    e.stopPropagation()
+    setEditId(t.id)
+    setEditName(t.name)
+  }
+
+  async function saveEdit() {
+    if (!editId || !editName.trim()) { setEditId(null); return }
+    await updateName.mutateAsync({ tournamentId: editId, name: editName.trim() })
+    setEditId(null)
+  }
 
   return (
     <>
@@ -894,30 +1078,122 @@ function TorneosTab() {
                 <Trophy size={16} className="text-union-blue" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-white truncate">{t.name}</span>
-                  {t.entry_fee === 0
-                    ? <span className="text-xs text-green-400 font-medium">Gratis</span>
-                    : <span className="text-xs text-yellow-400 font-medium">${t.entry_fee.toLocaleString('es-AR')} ARS</span>
-                  }
-                </div>
-                <p className="text-xs text-white/40">Creado por <span className="text-white/60">{t.creator_username}</span></p>
+                {editId === t.id ? (
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onBlur={saveEdit}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditId(null) }}
+                    className="w-full bg-union-navy border border-union-blue/40 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-union-blue"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-white truncate">{t.name}</span>
+                    {t.entry_fee === 0
+                      ? <span className="text-xs text-green-400 font-medium">Gratis</span>
+                      : <span className="text-xs text-yellow-400 font-medium">${t.entry_fee.toLocaleString('es-AR')} ARS</span>
+                    }
+                  </div>
+                )}
+                <p className="text-xs text-white/40 mt-0.5">
+                  Creado por <span className="text-white/60">{t.creator_username}</span>
+                  {t.entry_fee > 0 && (
+                    <> · <span className="text-white/30">{t.paid_count}/{t.member_count} pagaron</span></>
+                  )}
+                </p>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-xs text-white/50">{t.member_count} participantes</p>
+              <div className="flex items-center gap-1 shrink-0">
                 {t.entry_fee > 0 && (
-                  <p className="text-xs text-green-400 font-semibold">
-                    ${t.total_collected.toLocaleString('es-AR')} recaudado
-                  </p>
+                  <div className="text-right mr-2 hidden sm:block">
+                    <p className="text-xs text-white/50">{t.member_count} participantes</p>
+                    <p className="text-xs text-green-400 font-semibold">${t.total_collected.toLocaleString('es-AR')} rec.</p>
+                  </div>
                 )}
-                {t.entry_fee > 0 && (
-                  <p className="text-xs text-white/30">{t.paid_count}/{t.member_count} pagaron</p>
+                {t.entry_fee === 0 && (
+                  <span className="text-xs text-white/30 mr-2 hidden sm:block">{t.member_count} part.</span>
                 )}
+                <button
+                  onClick={(e) => startEdit(e, t)}
+                  className="p-1.5 text-white/40 hover:text-union-blue transition-colors"
+                  title="Editar nombre"
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button
+                  onClick={() => setMembersOf(t)}
+                  className="p-1.5 text-white/40 hover:text-white transition-colors"
+                  title="Ver participantes"
+                >
+                  <Users size={14} />
+                </button>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {membersOf && (
+        <TournamentMembersModal tournament={membersOf} onClose={() => setMembersOf(null)} />
+      )}
     </>
+  )
+}
+
+// ─── Tournament members modal ─────────────────────────────────
+function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTournament; onClose: () => void }) {
+  const { data: members = [], isLoading } = useAdminTournamentMembers(tournament.id)
+  const setMemberPaid = useAdminSetMemberPaid()
+
+  return (
+    <Modal open onClose={onClose} title={`Participantes — ${tournament.name}`}>
+      {isLoading ? (
+        <p className="text-white/40 text-sm">Cargando...</p>
+      ) : members.length === 0 ? (
+        <p className="text-white/40 text-sm text-center py-4">Sin participantes aún</p>
+      ) : (
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {members.map((m) => (
+            <div key={m.user_id} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-union-blue">
+                    {(m.username ?? '?')[0].toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{m.username ?? '—'}</p>
+                <p className="text-xs text-white/30">
+                  {new Date(m.joined_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              {tournament.entry_fee > 0 ? (
+                <button
+                  onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
+                  disabled={setMemberPaid.isPending}
+                  className={cn(
+                    'shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
+                    m.paid
+                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                      : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                  )}
+                >
+                  {m.paid ? '✓ Pagado' : 'Sin pago'}
+                </button>
+              ) : (
+                <span className="shrink-0 text-xs text-white/20">Gratis</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-white/30 mt-3 text-right pt-3 border-t border-union-blue/10">
+        {members.length} participante{members.length !== 1 ? 's' : ''}
+      </p>
+    </Modal>
   )
 }
