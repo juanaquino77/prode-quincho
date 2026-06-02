@@ -11,6 +11,14 @@ import { useCreateTournament } from '../../hooks/useTournaments'
 import { useTournamentTypesPublic } from '../../hooks/useTournamentTypes'
 import type { Tournament, TournamentTypePublic } from '../../types'
 
+// TODO: habilitar cuando haya múltiples competencias activas simultáneas
+// const COMPETITIONS = [
+//   { value: 'mundial_2026', label: '🌎 Mundial 2026' },
+//   { value: 'apertura_2026', label: '🇦🇷 Apertura 2026' },
+// ]
+// Para activar: descomentar COMPETITIONS, cambiar defaultValues.competition a '' y
+// agregar el select en el form (buscar "TODO: selector de competencia")
+
 const schema = z.object({
   name: z.string().min(3, 'Mínimo 3 caracteres').max(50),
   competition: z.string().min(1),
@@ -81,6 +89,14 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
             error={errors.name?.message}
             {...register('name')}
           />
+          {/* TODO: selector de competencia — descomentar COMPETITIONS arriba y este bloque cuando haya múltiples activas */}
+          {/* <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-union-blue-light">Competencia</label>
+            <select className="bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-union-blue" {...register('competition')}>
+              {COMPETITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div> */}
+
           {/* Toggle gratis / pago */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-union-blue-light">Modalidad</label>
