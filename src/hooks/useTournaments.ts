@@ -198,6 +198,20 @@ export function useAutoEnrollGlobal() {
   })
 }
 
+export function useRenameTournament() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const { error } = await supabase.from('tournaments').update({ name }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] })
+      qc.invalidateQueries({ queryKey: ['user-tournaments'] })
+    },
+  })
+}
+
 export function useCreatePayment() {
   const qc = useQueryClient()
   return useMutation({
