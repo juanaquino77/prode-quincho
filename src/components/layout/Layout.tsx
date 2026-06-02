@@ -1,8 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from './Header'
+import { AppTour } from '../tour/AppTour'
+import { HowToPlayModal } from '../tour/HowToPlayModal'
 import { useGlobalTournament, useUserTournaments, useAutoEnrollGlobal } from '../../hooks/useTournaments'
 import { useAuthStore } from '../../store/authStore'
+import { useHelpStore, hasTourBeenSeen, markTourAsSeen } from '../../store/helpStore'
 
 function GlobalTournamentBanner() {
   const { user } = useAuthStore()
@@ -51,11 +54,25 @@ function GlobalTournamentBanner() {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
+  const { openTour } = useHelpStore()
+
+  // Mostrar tour automáticamente la primera vez
+  useEffect(() => {
+    if (!hasTourBeenSeen()) {
+      markTourAsSeen()
+      // Pequeño delay para que la app termine de cargar antes de mostrar el tour
+      const t = setTimeout(() => openTour(), 600)
+      return () => clearTimeout(t)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-navy">
       <Header />
       <GlobalTournamentBanner />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
+      <AppTour />
+      <HowToPlayModal />
     </div>
   )
 }

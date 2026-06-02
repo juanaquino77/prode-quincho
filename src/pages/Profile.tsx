@@ -2,9 +2,10 @@ import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Camera, Save, Mail, Calendar, Trophy, Loader2 } from 'lucide-react'
+import { User, Camera, Save, Mail, Calendar, Trophy, Loader2, Sparkles, BookOpen } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUpdateProfile, useUploadAvatar } from '../hooks/useProfile'
+import { useHelpStore } from '../store/helpStore'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
 import { Layout } from '../components/layout/Layout'
@@ -17,6 +18,7 @@ type FormData = z.infer<typeof schema>
 
 export default function Profile() {
   const { user, profile } = useAuthStore()
+  const { openTour, openHowToPlay } = useHelpStore()
   const [success, setSuccess] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
@@ -173,6 +175,31 @@ export default function Profile() {
               )}
             </Button>
           </form>
+        </div>
+
+        {/* Ayuda */}
+        <div className="mt-4 bg-union-navy-light border border-union-blue/20 rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider">Ayuda</h2>
+          <button
+            onClick={openTour}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-union-navy hover:bg-union-blue/10 border border-transparent hover:border-union-blue/20 transition-colors text-left"
+          >
+            <Sparkles size={16} className="text-union-blue shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-white">Tour de bienvenida</p>
+              <p className="text-xs text-white/40">Repasá cómo funciona la app paso a paso</p>
+            </div>
+          </button>
+          <button
+            onClick={openHowToPlay}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-union-navy hover:bg-union-blue/10 border border-transparent hover:border-union-blue/20 transition-colors text-left"
+          >
+            <BookOpen size={16} className="text-union-blue shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-white">Cómo jugar</p>
+              <p className="text-xs text-white/40">Reglas, puntos, fases del torneo y más</p>
+            </div>
+          </button>
         </div>
       </div>
     </Layout>

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Trophy, Menu, X, LogOut, User, Shield, BarChart3, Calendar, Users } from 'lucide-react'
+import { Trophy, Menu, X, LogOut, User, Shield, BarChart3, Calendar, Users, HelpCircle, Sparkles, BookOpen } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/authStore'
 import { useIsAdmin } from '../../hooks/useAuth'
+import { useHelpStore } from '../../store/helpStore'
 import { cn } from '../../lib/utils'
 
 // Custom tournament bracket icon (sideways elimination tree)
@@ -42,15 +43,29 @@ const NAV_ITEMS = [
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const helpRef = useRef<HTMLDivElement>(null)
   const { user, profile } = useAuthStore()
   const isAdmin = useIsAdmin()
   const navigate = useNavigate()
   const location = useLocation()
+  const { openTour, openHowToPlay } = useHelpStore()
 
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/login')
   }
+
+  // Cerrar dropdown al hacer click afuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
+        setHelpOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <header className="bg-union-navy border-b border-union-blue/20 sticky top-0 z-40">
@@ -99,6 +114,38 @@ export function Header() {
 
           {/* User actions */}
           <div className="flex items-center gap-2">
+            {/* Help button */}
+            <div className="relative" ref={helpRef}>
+              <button
+                onClick={() => setHelpOpen(!helpOpen)}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  helpOpen ? 'text-white bg-white/10' : 'text-white/40 hover:text-white hover:bg-white/5'
+                )}
+                title="Ayuda"
+              >
+                <HelpCircle size={18} />
+              </button>
+              {helpOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-union-navy border border-union-blue/20 rounded-xl shadow-xl py-1 z-50">
+                  <button
+                    onClick={() => { openTour(); setHelpOpen(false) }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/65 hover:text-white hover:bg-white/5 w-full transition-colors"
+                  >
+                    <Sparkles size={14} className="text-union-blue shrink-0" />
+                    Tour de bienvenida
+                  </button>
+                  <button
+                    onClick={() => { openHowToPlay(); setHelpOpen(false) }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/65 hover:text-white hover:bg-white/5 w-full transition-colors"
+                  >
+                    <BookOpen size={14} className="text-union-blue shrink-0" />
+                    Cómo jugar
+                  </button>
+                </div>
+              )}
+            </div>
+
             {user && (
               <>
                 <Link to="/perfil" className="hidden sm:flex items-center gap-2 group">
