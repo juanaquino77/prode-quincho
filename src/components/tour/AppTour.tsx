@@ -37,7 +37,7 @@ const STEPS: Step[] = [
     content: [
       'En Predicciones vas a ver todos los partidos del Mundial organizados por grupo y fase.',
       'Para cada partido escribís el marcador que creés que va a salir y guardás.',
-      '⏰  Podés modificar tus pronósticos hasta 15 minutos antes del inicio del partido.',
+      '⏰  Cada partido cierra individualmente: podés modificar tu pronóstico hasta 15 minutos antes de que arranque ESE partido.',
       '📅  Hay 2 fases: Grupos (todos contra todos) y Playoffs (desde octavos hasta la final).',
     ],
   },

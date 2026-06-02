@@ -7,29 +7,32 @@ const SECTIONS = [
     title: 'El Mundial 2026',
     items: [
       '48 selecciones compiten en USA, México y Canadá.',
-      'Fase de grupos: 12 grupos de 4 equipos. Los 2 mejores de cada grupo pasan a la siguiente ronda.',
-      'Playoffs: 32 equipos desde octavos de final hasta la gran final. Eliminación directa.',
+      'Fase de grupos: 12 grupos de 4 equipos. Los 2 primeros de cada grupo clasifican directamente (24 equipos en total).',
+      'Los 8 mejores terceros puestos entre los 12 grupos también clasifican.',
+      'Round of 32: 32 equipos en eliminación directa, desde octavos de final hasta la gran final.',
     ],
   },
   {
     emoji: '🎯',
     title: 'Sistema de puntos',
     table: [
-      { accion: 'Resultado exacto (ej: 2-1 correcto)',          pts: '+3 pts' },
-      { accion: 'Solo ganador/empate acertado (ej: predijiste 2-0, salió 1-0)', pts: '+1 pt' },
-      { accion: 'Adivinás el ganador en penales',               pts: '+1 pt' },
-      { accion: 'Corazonada: partido especial con bonus',        pts: 'puntos extra' },
-      { accion: 'Predicciones especiales (campeón, goleador, MVP)', pts: '+2 pts c/u' },
+      { accion: 'Resultado exacto (ej: predijiste 2-1 y salió 2-1)',            pts: '+3 pts' },
+      { accion: 'Ganador/empate acertado sin resultado exacto (ej: predijiste 2-0, salió 1-0)', pts: '+1 pt' },
+      { accion: 'Penales: acertás el ganador en penales',                        pts: '+1 pt' },
+      { accion: 'Penales: errás el ganador (habiendo acertado el empate exacto)', pts: '−1 pt' },
+      { accion: '💛 Corazonada: acertás el resultado EXACTO del partido elegido', pts: '+5 pts' },
+      { accion: '💛 Corazonada: acertás solo el ganador (sin resultado exacto)',  pts: '+1 pt (normal)' },
+      { accion: 'Predicciones especiales (campeón, goleador, MVP)',               pts: '+2 pts c/u' },
     ],
-    note: 'Los puntos exactos dependen del tipo de torneo. Consultá las reglas de cada torneo.',
+    note: 'La corazonada es un partido especial que cada jugador elige por grupo. Solo suma los 5 pts si el resultado es exacto.',
   },
   {
     emoji: '⏰',
     title: 'Cierre de pronósticos',
     items: [
-      'Podés cargar y modificar tus pronósticos hasta 15 minutos antes del inicio de cada partido.',
-      'Una vez que arranca el partido, los pronósticos quedan bloqueados definitivamente.',
-      'No te preocupes si un partido ya empezó — seguís pudiendo cargar los de los partidos que todavía no comenzaron.',
+      'Cada pronóstico cierra de forma individual: 15 minutos antes de que arranque ese partido específico.',
+      'Una vez cerrado ese partido, no podés modificar ese pronóstico.',
+      'Mientras tanto, podés seguir cargando o editando los pronósticos de los demás partidos que estén a más de 15 minutos de comenzar.',
     ],
   },
   {
@@ -39,7 +42,7 @@ const SECTIONS = [
       'Torneo Global: competís contra todos. La entrada son $20.000 ARS, se paga una sola vez vía Mercado Pago.',
       'Torneos de Amigos: privados, con código de invitación. Podés crear uno o unirte al de un amigo.',
       'Para unirte a torneos de amigos necesitás estar inscripto en el torneo global primero.',
-      'Los torneos de amigos pueden ser gratuitos o tener su propia entrada. El club recibe un % de los torneos pagos.',
+      'Los torneos de amigos pueden ser gratuitos o tener su propia entrada. El club recibe un 10% de los torneos pagos.',
     ],
   },
   {
@@ -104,7 +107,9 @@ export function HowToPlayModal() {
                         className={`flex items-center justify-between px-3 py-2.5 gap-3 ${i % 2 === 0 ? 'bg-union-navy-light' : 'bg-union-navy'}`}
                       >
                         <span className="text-white/55 leading-snug">{row.accion}</span>
-                        <span className="font-bold text-union-blue shrink-0">{row.pts}</span>
+                        <span className={`font-bold shrink-0 ${row.pts.startsWith('−') ? 'text-red-400' : 'text-union-blue'}`}>
+                          {row.pts}
+                        </span>
                       </div>
                     ))}
                   </div>
