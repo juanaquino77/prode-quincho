@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2,
+  Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2, Pencil,
   ChevronRight, Copy, Check, ClipboardList, LayoutList, ScrollText, QrCode,
 } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
@@ -13,7 +13,7 @@ import { Modal } from '../components/ui/Modal'
 import { CreateTournamentModal } from '../components/tournaments/CreateTournamentModal'
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
 import { TournamentRulesModal } from '../components/tournaments/TournamentRulesModal'
-import { useUserTournaments, useGlobalTournament, useDeleteTournament } from '../hooks/useTournaments'
+import { useUserTournaments, useGlobalTournament, useDeleteTournament, useRenameTournament } from '../hooks/useTournaments'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { useAuthStore } from '../store/authStore'
@@ -174,7 +174,10 @@ function TournamentCard({ tournament, isGlobal, userId }: {
 }) {
   const navigate = useNavigate()
   const deleteTournament = useDeleteTournament()
+  const renameTournament = useRenameTournament()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameValue, setRenameValue] = useState(tournament.name)
   const [copied, setCopied] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
@@ -261,13 +264,22 @@ function TournamentCard({ tournament, isGlobal, userId }: {
                 : <Badge variant="green"><Unlock size={10} className="mr-1" />Gratis</Badge>}
               {isGlobal && <Badge variant="blue">Global</Badge>}
               {isCreator && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
-                  className="p-1 text-white/30 hover:text-red-400 transition-colors ml-1"
-                  title="Eliminar torneo"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setRenameValue(tournament.name); setRenameOpen(true) }}
+                    className="p-1 text-white/30 hover:text-union-blue transition-colors"
+                    title="Renombrar torneo"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+                    className="p-1 text-white/30 hover:text-red-400 transition-colors"
+                    title="Eliminar torneo"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -387,6 +399,32 @@ function TournamentCard({ tournament, isGlobal, userId }: {
               : <><Copy size={14} className="mr-1.5" />Copiar link</>
             }
           </Button>
+        </div>
+      </Modal>
+
+      <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Renombrar torneo">
+        <input
+          className="w-full bg-union-navy border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-union-blue"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          maxLength={50}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && renameValue.trim().length >= 3) {
+              renameTournament.mutate({ id: tournament.id, name: renameValue.trim() }, { onSuccess: () => setRenameOpen(false) })
+            }
+          }}
+        />
+        <div className="flex gap-2">
+          <Button
+            onClick={() => renameTournament.mutate({ id: tournament.id, name: renameValue.trim() }, { onSuccess: () => setRenameOpen(false) })}
+            loading={renameTournament.isPending}
+            disabled={renameValue.trim().length < 3}
+            className="flex-1"
+          >
+            Guardar
+          </Button>
+          <Button variant="secondary" onClick={() => setRenameOpen(false)} className="flex-1">Cancelar</Button>
         </div>
       </Modal>
 
