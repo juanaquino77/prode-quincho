@@ -11,11 +11,6 @@ import { useCreateTournament } from '../../hooks/useTournaments'
 import { useTournamentTypesPublic } from '../../hooks/useTournamentTypes'
 import type { Tournament, TournamentTypePublic } from '../../types'
 
-const COMPETITIONS = [
-  { value: 'apertura_2026', label: '🇦🇷 Apertura 2026' },
-  { value: 'mundial_2026', label: '🌎 Mundial 2026' },
-]
-
 const schema = z.object({
   name: z.string().min(3, 'Mínimo 3 caracteres').max(50),
   competition: z.string().min(1),
@@ -35,7 +30,7 @@ interface Props {
 export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { entry_fee: 0, competition: 'apertura_2026', tournament_type_id: '', has_special_predictions: false, has_corazonada: false },
+    defaultValues: { entry_fee: 0, competition: 'mundial_2026', tournament_type_id: '', has_special_predictions: false, has_corazonada: false },
   })
   const createTournament = useCreateTournament()
   const { data: types = [], isLoading: typesLoading } = useTournamentTypesPublic()
@@ -86,17 +81,6 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
             error={errors.name?.message}
             {...register('name')}
           />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-union-blue-light">Competencia</label>
-            <select
-              className="bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-union-blue"
-              {...register('competition')}
-            >
-              {COMPETITIONS.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
           {/* Toggle gratis / pago */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-union-blue-light">Modalidad</label>
