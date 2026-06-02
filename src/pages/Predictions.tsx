@@ -19,7 +19,7 @@ const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quart
 const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
 
 export default function Predictions() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { data: globalTournament } = useGlobalTournament()
   const { data: myTournaments, isLoading: myTournamentsLoading, isFetching: myTournamentsFetching } = useUserTournaments(user?.id)
   const { selectedTournamentId, setSelectedTournamentId } = useTournamentStore()
@@ -93,7 +93,7 @@ export default function Predictions() {
     return lockTime ? Date.now() >= lockTime.getTime() : false
   }
 
-  const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true
+  const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true && profile?.free_pass !== true
 
   async function handlePresentarTarjeta() {
     if (!selectedTournament) return
