@@ -11,6 +11,22 @@ import { useTournamentStore } from '../store/tournamentStore'
 import { formatShortDate, resolveMatches } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 
+// Muestra el emoji de bandera de país, o el escudo del club como fallback
+function MatchFlag({ flag, teamName, size }: { flag: string | null; teamName: string; size: number }) {
+  if (flag) {
+    return (
+      <span
+        className="shrink-0 flex items-center justify-center"
+        style={{ width: size, height: size, fontSize: size * 0.72, lineHeight: 1 }}
+        aria-label={teamName}
+      >
+        {flag}
+      </span>
+    )
+  }
+  return <ClubFlag teamName={teamName} size={size} className="shrink-0" />
+}
+
 export default function Dashboard() {
   const { user, profile } = useAuthStore()
   const { data: allMatches } = useMatches()
@@ -63,8 +79,22 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-white">
           ¡Hola, {profile?.username ?? 'jugador'}! 👋
         </h1>
-        <p className="text-white/50 mt-0.5">Mundial 2026 · Club Unión de Mar del Plata</p>
+        <p className="text-white/50 mt-0.5">Mundial 2026 · El Quincho</p>
       </div>
+
+      {/* Prize pool banner */}
+      {globalTournament && (globalTournament.entry_fee ?? 0) > 0 && (
+        <Link to="/torneos">
+          <div className="mb-5 flex items-center gap-3 bg-gradient-to-r from-yellow-500/10 to-amber-600/10 border border-yellow-500/25 rounded-xl px-4 py-3 hover:from-yellow-500/15 hover:to-amber-600/15 transition-colors">
+            <span className="text-2xl shrink-0">💰</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-yellow-300">¡Más de $1.000.000 en premios!</p>
+              <p className="text-xs text-yellow-400/60 mt-0.5">Hacete del millón con solo $20.000 · Cuanto más somos, más crece el pozo</p>
+            </div>
+            <ArrowRight size={15} className="text-yellow-400 shrink-0" />
+          </div>
+        </Link>
+      )}
 
       {/* Special predictions banner */}
       {specialNotFilled && specialStillOpen && (
@@ -108,12 +138,12 @@ export default function Dashboard() {
               (live.length > 0 ? live : upcoming).map((match) => (
                 <Card key={match.id} className={`overflow-hidden ${match.status === 'live' ? 'border-red-500/20' : ''}`}>
                   <div className="flex items-center gap-2 w-full min-w-0">
-                    <ClubFlag teamName={match.home_team} size={24} className="shrink-0" />
+                    <MatchFlag flag={match.home_flag} teamName={match.home_team} size={24} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">{match.home_team} vs {match.away_team}</p>
                       <p className="text-xs text-white/40 truncate">{formatShortDate(match.match_date)}</p>
                     </div>
-                    <ClubFlag teamName={match.away_team} size={24} className="shrink-0" />
+                    <MatchFlag flag={match.away_flag} teamName={match.away_team} size={24} />
                     <div className="shrink-0 ml-1">
                       {match.status === 'live' && match.home_score !== null && match.away_score !== null ? (
                         <div className="flex items-center gap-1">

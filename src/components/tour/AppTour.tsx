@@ -13,9 +13,9 @@ interface Step {
 const STEPS: Step[] = [
   {
     emoji: '🎉',
-    title: '¡Bienvenido al Prode del Club Unión!',
+    title: '¡Bienvenido al Prode de El Quincho!',
     content: [
-      'El pronosticador oficial del Club Unión de Mar del Plata para el Mundial 2026.',
+      'El pronosticador oficial de El Quincho para el Mundial 2026.',
       'Completá tus predicciones partido a partido y competí contra tus amigos y toda la hinchada.',
       'Te mostramos cómo funciona en 3 pasos 👇',
     ],

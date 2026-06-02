@@ -45,7 +45,11 @@ export default function Login() {
             <Trophy size={36} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">Prode Quincho</h1>
-          <p className="text-white/50 mt-1">Mundial 2026 · Club Unión</p>
+          <p className="text-white/50 mt-1">Mundial 2026 · El Quincho</p>
+          <div className="mt-3 inline-flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full px-4 py-1.5">
+            <span className="text-yellow-400 text-sm font-bold">💰 +$1.000.000 en premios</span>
+          </div>
+          <p className="text-white/30 text-xs mt-1.5">Hacete del millón con solo $20.000</p>
         </div>
 
         <div className="bg-union-navy-light border border-union-blue/20 rounded-2xl p-6 shadow-2xl">
