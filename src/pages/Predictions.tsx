@@ -613,25 +613,18 @@ export default function Predictions() {
         </div>
       )}
 
-      {/* Presentar tarjeta — sticky bottom bar para torneos con entrada */}
-      {!myTournamentsLoading && !myTournamentsFetching && selectedTournament && (selectedTournament.entry_fee ?? 0) > 0 && (
+      {/* Presentar tarjeta — solo se muestra si aún no pagó */}
+      {!myTournamentsLoading && !myTournamentsFetching && selectedTournament && needsPayment && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-union-navy/95 backdrop-blur-sm border-t border-union-blue/20 px-4 py-3">
           <div className="max-w-7xl mx-auto">
-            {needsPayment ? (
-              <Button
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3"
-                onClick={handlePresentarTarjeta}
-                loading={createPayment.isPending}
-              >
-                <CreditCard size={16} className="mr-2" />
-                Presentar tarjeta — ${selectedTournament.entry_fee} ARS
-              </Button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 py-2 text-green-400 font-semibold">
-                <CheckCircle2 size={18} />
-                Tarjeta presentada
-              </div>
-            )}
+            <Button
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3"
+              onClick={handlePresentarTarjeta}
+              loading={createPayment.isPending}
+            >
+              <CreditCard size={16} className="mr-2" />
+              Presentar tarjeta — ${selectedTournament.entry_fee} ARS
+            </Button>
           </div>
         </div>
       )}

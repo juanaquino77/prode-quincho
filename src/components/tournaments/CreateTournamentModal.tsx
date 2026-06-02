@@ -41,9 +41,15 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
   const { data: types = [], isLoading: typesLoading } = useTournamentTypesPublic()
   const [created, setCreated] = useState<Tournament | null>(null)
   const [copied, setCopied] = useState(false)
+  const [isFree, setIsFree] = useState(false)
   const selectedTypeId = watch('tournament_type_id')
   const hasSpecialPredictions = watch('has_special_predictions')
   const hasCorazonada = watch('has_corazonada')
+
+  function toggleFree(free: boolean) {
+    setIsFree(free)
+    if (free) setValue('entry_fee', 0)
+  }
 
   async function onSubmit(data: FormData) {
     const t = await createTournament.mutateAsync({
@@ -57,6 +63,7 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
 
   function handleClose() {
     setCreated(null)
+    setIsFree(false)
     reset()
     onClose()
   }
@@ -90,18 +97,48 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
               ))}
             </select>
           </div>
-          <div>
-            <Input
-              label="Inscripción (ARS)"
-              type="number"
-              min="0"
-              placeholder="0 = gratuito"
-              error={errors.entry_fee?.message}
-              {...register('entry_fee')}
-            />
-            <p className="text-xs text-white/30 mt-1.5">
-              💡 Un pequeño porcentaje de la inscripción va destinado al club.
-            </p>
+          {/* Toggle gratis / pago */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-union-blue-light">Modalidad</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => toggleFree(false)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                  !isFree
+                    ? 'border-yellow-500/60 bg-yellow-500/15 text-yellow-400'
+                    : 'border-union-blue/20 bg-union-navy-light text-white/40 hover:text-white/70'
+                }`}
+              >
+                💰 Pago
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleFree(true)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                  isFree
+                    ? 'border-green-500/60 bg-green-500/15 text-green-400'
+                    : 'border-union-blue/20 bg-union-navy-light text-white/40 hover:text-white/70'
+                }`}
+              >
+                🎟️ Gratis
+              </button>
+            </div>
+            {!isFree && (
+              <div>
+                <Input
+                  label="Inscripción (ARS)"
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 5000"
+                  error={errors.entry_fee?.message}
+                  {...register('entry_fee')}
+                />
+                <p className="text-xs text-white/30 mt-1.5">
+                  💡 Un pequeño porcentaje de la inscripción va destinado al club.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Selector de tipo de torneo */}

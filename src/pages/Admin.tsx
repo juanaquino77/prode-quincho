@@ -361,7 +361,9 @@ function MatchesTab() {
 // ─── Users tab ────────────────────────────────────────────────
 function UsersTab() {
   const { data: users, isLoading, error } = useAdminUsers()
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  // Derivar siempre del dato fresco para que el modal refleje cambios inmediatamente
+  const selectedUser = selectedUserId ? (users ?? []).find(u => u.user_id === selectedUserId) ?? null : null
 
   return (
     <>
@@ -383,7 +385,7 @@ function UsersTab() {
             <Card
               key={u.user_id}
               className="flex items-center gap-3 cursor-pointer hover:border-union-blue/40 transition-colors"
-              onClick={() => setSelectedUser(u)}
+              onClick={() => setSelectedUserId(u.user_id)}
             >
               {/* Avatar */}
               <div className="w-9 h-9 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
@@ -421,7 +423,7 @@ function UsersTab() {
         </div>
       )}
 
-      <UserActionsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+      <UserActionsModal user={selectedUser} onClose={() => setSelectedUserId(null)} />
     </>
   )
 }
