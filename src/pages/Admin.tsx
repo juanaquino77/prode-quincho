@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff, Ticket } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff, Ticket, Trophy, DollarSign } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -86,7 +86,7 @@ const matchSchema = z.object({
 type MatchFormData = z.infer<typeof matchSchema>
 
 // ─── Admin page ───────────────────────────────────────────────
-type Tab = 'results' | 'matches' | 'users' | 'types'
+type Tab = 'results' | 'matches' | 'users' | 'types' | 'torneos'
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<Tab>('results')
@@ -101,10 +101,11 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0 overflow-x-auto">
         {([
-          { id: 'results', label: 'Resultados', icon: ClipboardList },
-          { id: 'matches', label: 'Partidos',   icon: Calendar },
-          { id: 'users',   label: 'Usuarios',   icon: Users },
-          { id: 'types',   label: 'Tipos',      icon: Layers },
+          { id: 'results',  label: 'Resultados', icon: ClipboardList },
+          { id: 'matches',  label: 'Partidos',   icon: Calendar },
+          { id: 'users',    label: 'Usuarios',   icon: Users },
+          { id: 'types',    label: 'Tipos',      icon: Layers },
+          { id: 'torneos',  label: 'Torneos',    icon: Trophy },
         ] as { id: Tab; label: string; icon: typeof Calendar }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -126,6 +127,7 @@ export default function Admin() {
       {activeTab === 'matches' && <MatchesTab />}
       {activeTab === 'users'   && <UsersTab />}
       {activeTab === 'types'   && <TournamentTypesTab />}
+      {activeTab === 'torneos' && <TorneosTab />}
     </Layout>
   )
 }
@@ -797,5 +799,125 @@ function TournamentTypeModal({
         )}
       </form>
     </Modal>
+  )
+}
+
+// ─── Torneos Tab ──────────────────────────────────────────────
+interface AdminTournament {
+  id: string
+  name: string
+  created_by: string | null
+  creator_username: string | null
+  entry_fee: number
+  member_count: number
+  paid_count: number
+  total_collected: number
+  created_at: string
+}
+
+function useFriendTournaments() {
+  return useQuery({
+    queryKey: ['admin-friend-tournaments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select(`
+          id, name, created_by, entry_fee, created_at,
+          tournament_members(count),
+          payments(status, amount)
+        `)
+        .eq('type', 'friends')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+
+      // Fetch creator usernames separately
+      const creatorIds = [...new Set((data ?? []).map((t: any) => t.created_by).filter(Boolean))]
+      let usernameMap: Record<string, string> = {}
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', creatorIds)
+        usernameMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p.username]))
+      }
+
+      return (data ?? []).map((t: any) => {
+        const members = t.tournament_members?.[0]?.count ?? 0
+        const payments: { status: string; amount: number }[] = t.payments ?? []
+        const approved = payments.filter((p) => p.status === 'approved')
+        return {
+          id: t.id,
+          name: t.name,
+          created_by: t.created_by,
+          creator_username: t.created_by ? (usernameMap[t.created_by] ?? '—') : '—',
+          entry_fee: t.entry_fee,
+          member_count: members,
+          paid_count: approved.length,
+          total_collected: approved.reduce((sum: number, p) => sum + p.amount, 0),
+          created_at: t.created_at,
+        } as AdminTournament
+      })
+    },
+  })
+}
+
+function TorneosTab() {
+  const { data: tournaments, isLoading } = useFriendTournaments()
+
+  const totalRecaudado = (tournaments ?? []).reduce((sum, t) => sum + t.total_collected, 0)
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <p className="text-white/40 text-sm">{tournaments?.length ?? 0} torneos de amigos activos</p>
+        {totalRecaudado > 0 && (
+          <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-1.5">
+            <DollarSign size={14} className="text-green-400" />
+            <span className="text-green-400 text-sm font-semibold">Total recaudado: ${totalRecaudado.toLocaleString('es-AR')} ARS</span>
+          </div>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="text-white/40 text-sm">Cargando torneos...</p>
+      ) : (tournaments ?? []).length === 0 ? (
+        <Card className="text-center py-8">
+          <Trophy size={28} className="text-white/20 mx-auto mb-2" />
+          <p className="text-white/40 text-sm">No hay torneos de amigos creados</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {(tournaments ?? []).map((t) => (
+            <Card key={t.id} className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-union-blue/20 rounded-xl flex items-center justify-center shrink-0">
+                <Trophy size={16} className="text-union-blue" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-white truncate">{t.name}</span>
+                  {t.entry_fee === 0
+                    ? <span className="text-xs text-green-400 font-medium">Gratis</span>
+                    : <span className="text-xs text-yellow-400 font-medium">${t.entry_fee.toLocaleString('es-AR')} ARS</span>
+                  }
+                </div>
+                <p className="text-xs text-white/40">Creado por <span className="text-white/60">{t.creator_username}</span></p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-white/50">{t.member_count} participantes</p>
+                {t.entry_fee > 0 && (
+                  <p className="text-xs text-green-400 font-semibold">
+                    ${t.total_collected.toLocaleString('es-AR')} recaudado
+                  </p>
+                )}
+                {t.entry_fee > 0 && (
+                  <p className="text-xs text-white/30">{t.paid_count}/{t.member_count} pagaron</p>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </>
   )
 }
