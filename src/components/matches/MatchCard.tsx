@@ -486,41 +486,49 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
           <p className="text-[10px] text-white/25 text-right italic">Pronóstico cerrado</p>
         )}
 
-        {/* Corazonada — solo fase de grupos */}
-        {corazonadaEnabled && !!match.group_name && match.status !== 'finished' && (
+        {/* Corazonada — grupos y eliminatorias (hasta cuartos) */}
+        {corazonadaEnabled && match.status !== 'finished' && (
           <div className="pt-1.5 border-t border-amber-500/10 mt-1.5">
-            {isCorazonada ? (
-              corazonadaLocked ? (
-                <p className="text-center text-xs text-amber-400/60 font-medium">
-                  💛 Corazonada Grupo {match.group_name} — en juego
+            {(() => {
+              const label = match.group_name
+                ? `Grupo ${match.group_name}`
+                : match.stage === 'round_of_32' ? 'Round of 32'
+                : match.stage === 'round_of_16' ? '16avos'
+                : match.stage === 'quarterfinal' ? 'Cuartos'
+                : 'Eliminatoria'
+              return isCorazonada ? (
+                corazonadaLocked ? (
+                  <p className="text-center text-xs text-amber-400/60 font-medium">
+                    💛 Corazonada {label} — en juego
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onRemoveCorazonada}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors py-0.5"
+                  >
+                    💛 Corazonada {label}
+                    <span className="text-white/30 font-normal underline underline-offset-2">· cambiar</span>
+                  </button>
+                )
+              ) : corazonadaLocked ? (
+                <p className="text-center text-[10px] text-white/20 italic">
+                  Corazonada {label} cerrada
                 </p>
-              ) : (
+              ) : locked ? null : (
                 <button
                   type="button"
-                  onClick={onRemoveCorazonada}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors py-0.5"
+                  onClick={onAddCorazonada}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
                 >
-                  💛 Corazonada Grupo {match.group_name}
-                  <span className="text-white/30 font-normal underline underline-offset-2">· cambiar</span>
+                  <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
+                  <span className="group-hover:text-amber-300 transition-colors">
+                    Corazonada {label}
+                    <span className="text-white/20 group-hover:text-amber-400/50"> (5 pts total si exacto)</span>
+                  </span>
                 </button>
               )
-            ) : corazonadaLocked ? (
-              <p className="text-center text-[10px] text-white/20 italic">
-                Corazonada del Grupo {match.group_name} cerrada
-              </p>
-            ) : locked ? null : (
-              <button
-                type="button"
-                onClick={onAddCorazonada}
-                className="w-full flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-amber-400 transition-colors py-0.5 group"
-              >
-                <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
-                <span className="group-hover:text-amber-300 transition-colors">
-                  Corazonada Grupo {match.group_name}
-                  <span className="text-white/20 group-hover:text-amber-400/50"> (+{ptsCorazonadaBonus} pts si exacto)</span>
-                </span>
-              </button>
-            )}
+            })()}
           </div>
         )}
       </div>

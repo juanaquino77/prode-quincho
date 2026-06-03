@@ -989,36 +989,54 @@ function useFriendTournaments() {
   return useQuery({
     queryKey: ['admin-friend-tournaments'],
     queryFn: async () => {
-      // Usamos RPC con SECURITY DEFINER para que el count no sea limitado por RLS
-      const [tournamentsRes, paymentsRes] = await Promise.all([
-        supabase.rpc('admin_get_friend_tournaments'),
-        supabase.from('payments').select('tournament_id, status, amount').eq('status', 'approved'),
-      ])
-      if (tournamentsRes.error) throw tournamentsRes.error
+      // Intentamos con el RPC seguro (requiere migration 033 en Supabase).
+      // Si no existe todavía, usamos el fallback con PostgREST.
+      const rpcRes = await supabase.rpc('admin_get_friend_tournaments')
 
-      const tournaments: any[] = tournamentsRes.data ?? []
-      const payments: any[] = paymentsRes.data ?? []
+      let tournaments: any[]
+      let memberCountMap: Record<string, number> = {}
 
-      // Fetch creator usernames
-      const creatorIds = [...new Set(tournaments.map((t) => t.created_by).filter(Boolean))]
-      let usernameMap: Record<string, string> = {}
-      if (creatorIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .in('id', creatorIds)
-        usernameMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p.username]))
+      if (!rpcRes.error && rpcRes.data) {
+        // RPC disponible → counts exactos (bypasa RLS)
+        tournaments = rpcRes.data
+        memberCountMap = Object.fromEntries(rpcRes.data.map((t: any) => [t.id, Number(t.member_count ?? 0)]))
+      } else {
+        // Fallback: query directa (count puede estar limitado por RLS)
+        const { data, error } = await supabase
+          .from('tournaments')
+          .select('id, name, created_by, entry_fee, created_at, tournament_members(count)')
+          .eq('type', 'friends')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        tournaments = data ?? []
+        memberCountMap = Object.fromEntries(
+          tournaments.map((t: any) => [t.id, Number(t.tournament_members?.[0]?.count ?? 0)])
+        )
       }
 
-      return tournaments.map((t) => {
-        const approved = payments.filter((p) => p.tournament_id === t.id)
+      const [paymentsRes, profilesRes] = await Promise.all([
+        supabase.from('payments').select('tournament_id, status, amount').eq('status', 'approved'),
+        (() => {
+          const ids = [...new Set(tournaments.map((t: any) => t.created_by).filter(Boolean))]
+          return ids.length > 0
+            ? supabase.from('profiles').select('id, username').in('id', ids)
+            : Promise.resolve({ data: [] })
+        })(),
+      ])
+
+      const payments: any[] = paymentsRes.data ?? []
+      const usernameMap = Object.fromEntries(((profilesRes as any).data ?? []).map((p: any) => [p.id, p.username]))
+
+      return tournaments.map((t: any) => {
+        const approved = payments.filter((p: any) => p.tournament_id === t.id)
         return {
           id: t.id,
           name: t.name,
           created_by: t.created_by,
           creator_username: t.created_by ? (usernameMap[t.created_by] ?? '—') : '—',
           entry_fee: t.entry_fee,
-          member_count: Number(t.member_count ?? 0),
+          member_count: memberCountMap[t.id] ?? 0,
           paid_count: approved.length,
           total_collected: approved.reduce((sum: number, p: any) => sum + p.amount, 0),
           created_at: t.created_at,
