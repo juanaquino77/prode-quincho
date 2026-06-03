@@ -27,6 +27,7 @@ export default function Predictions() {
 
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
+  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>('groups')
   const hasSyncedStage = useRef(false)
   const batchTournamentRef = useRef<string | undefined>(undefined)
 
@@ -348,8 +349,33 @@ export default function Predictions() {
     return m.stage === resolvedStage
   })
 
-  const showStageTabs = availableStages.length > 1
-  const showGroupTabs = resolvedStage === 'group'
+  const showStageTabs = availableStages.length > 1 && viewMode === 'groups'
+  const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
+
+  // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
+  const calendarMatchesByDay = useMemo(() => {
+    if (viewMode !== 'calendar') return []
+    const sorted = resolveMatches(matches ?? [])
+      .slice()
+      .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+
+    const days: { dateKey: string; label: string; matches: Match[] }[] = []
+    for (const match of sorted) {
+      const d = new Date(match.match_date)
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      const last = days[days.length - 1]
+      if (last?.dateKey === dateKey) {
+        last.matches.push(match)
+      } else {
+        days.push({
+          dateKey,
+          label: d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }),
+          matches: [match],
+        })
+      }
+    }
+    return days
+  }, [matches, viewMode])
 
   function switchTournament(t: Tournament) {
     setSelectedTournamentId(t.id)
@@ -457,6 +483,32 @@ export default function Predictions() {
         </div>
       )}
 
+      {/* View mode toggle */}
+      <div className="flex gap-1.5 mb-5 p-1 bg-union-navy-light rounded-xl border border-union-blue/15 w-fit">
+        <button
+          onClick={() => setViewMode('groups')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+            viewMode === 'groups'
+              ? 'bg-union-blue text-white shadow-sm'
+              : 'text-white/40 hover:text-white/70'
+          )}
+        >
+          <span>Por grupos</span>
+        </button>
+        <button
+          onClick={() => setViewMode('calendar')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+            viewMode === 'calendar'
+              ? 'bg-union-blue text-white shadow-sm'
+              : 'text-white/40 hover:text-white/70'
+          )}
+        >
+          <span>Por fecha</span>
+        </button>
+      </div>
+
       {/* Special predictions */}
       {hasSpecial && selectedTournament && user && (
         <SpecialPredictionsCard
@@ -521,6 +573,44 @@ export default function Predictions() {
 
       {isLoading ? (
         <div className="text-center py-12 text-white/40">Cargando partidos...</div>
+      ) : viewMode === 'calendar' ? (
+        /* ── Vista calendario: todos los partidos por día ── */
+        <div className={needsPayment ? 'pb-24' : ''}>
+          {calendarMatchesByDay.length === 0 ? (
+            <div className="text-center py-12 text-white/40">No hay partidos</div>
+          ) : calendarMatchesByDay.map((day) => (
+            <div key={day.dateKey} className="mb-8">
+              <div className="flex items-center gap-3 mb-3">
+                <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
+                <div className="flex-1 h-px bg-union-blue/15" />
+                <span className="text-xs text-white/30">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {day.matches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    prediction={predMap.get(match.id)}
+                    tournamentId={selectedTournament!.id}
+                    userId={user!.id}
+                    phaseLocked={match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.')}
+                    phaseUnlockAt={phaseUnlockTimes.get(match.id)}
+                    lockAt={roundLockTimes.get(match.id)}
+                    highlighted={match.id === highlightMatchId}
+                    requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
+                    rules={selectedTournament!.rules}
+                    corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage)}
+                    isCorazonada={corazonadaByMatchId.has(match.id)}
+                    corazonadaLocked={isGroupLocked(match.group_name)}
+                    ptsCorazonadaBonus={ptsCorazonadaBonus}
+                    onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
+                    onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-12 text-white/40">No hay partidos en esta etapa</div>
       ) : resolvedStage === 'group' ? (
