@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,9 +19,18 @@ type FormData = z.infer<typeof schema>
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  const [sessionReady, setSessionReady] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
+
+  useEffect(() => {
+    // Supabase procesa el token del link en el hash y dispara este evento
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setSessionReady(true)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function onSubmit(data: FormData) {
     setError('')
@@ -43,13 +52,23 @@ export default function ResetPassword() {
 
         <div className="bg-union-navy-light border border-union-blue/20 rounded-2xl p-6 shadow-2xl">
           <h2 className="text-xl font-semibold text-white mb-2">Nueva contraseña</h2>
-          <p className="text-sm text-white/40 mb-5">Elegí tu nueva contraseña.</p>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input label="Nueva contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.password?.message} {...register('password')} />
-            <Input label="Confirmar contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.confirmPassword?.message} {...register('confirmPassword')} />
-            {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
-            <Button type="submit" loading={isSubmitting} className="w-full" size="lg">Guardar contraseña</Button>
-          </form>
+
+          {!sessionReady ? (
+            <div className="flex flex-col items-center py-6 gap-3">
+              <div className="w-8 h-8 border-2 border-union-blue border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-white/40">Verificando el link...</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-white/40 mb-5">Elegí tu nueva contraseña.</p>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <Input label="Nueva contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.password?.message} {...register('password')} />
+                <Input label="Confirmar contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.confirmPassword?.message} {...register('confirmPassword')} />
+                {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+                <Button type="submit" loading={isSubmitting} className="w-full" size="lg">Guardar contraseña</Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
