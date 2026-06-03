@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Mail, Lock, User, Trophy } from 'lucide-react'
+import { Mail, Lock, User, Trophy, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
@@ -12,11 +12,20 @@ const schema = z.object({
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y _'),
   full_name: z.string().min(2, 'Ingresá tu nombre'),
   email: z.string().email('Email inválido'),
+  confirmEmail: z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, { message: 'Las contraseñas no coinciden', path: ['confirmPassword'] })
+  phone_area: z.string().regex(/^\d{2,4}$/, 'Código de área inválido'),
+  phone_number: z.string().regex(/^\d{6,8}$/, 'Número inválido'),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Las contraseñas no coinciden', path: ['confirmPassword'],
+}).refine((d) => d.email === d.confirmEmail, {
+  message: 'Los emails no coinciden', path: ['confirmEmail'],
+})
 
 type FormData = z.infer<typeof schema>
+
+const DUPLICATE_EMAIL_ERRORS = ['User already registered', 'user_already_exists', 'already registered']
 
 export default function Register() {
   const navigate = useNavigate()
@@ -27,8 +36,6 @@ export default function Register() {
 
   async function onSubmit(data: FormData) {
     setError('')
-    // username + full_name van en options.data → el trigger handle_new_user los usa
-    // Esto evita cualquier error de RLS porque el trigger corre como SECURITY DEFINER
     const { error: signUpError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -36,10 +43,19 @@ export default function Register() {
         data: {
           username: data.username,
           full_name: data.full_name,
+          phone: `${data.phone_area}${data.phone_number}`,
         },
       },
     })
-    if (signUpError) { setError(signUpError.message); return }
+    if (signUpError) {
+      const isDuplicate = DUPLICATE_EMAIL_ERRORS.some(e => signUpError.message.includes(e))
+      if (isDuplicate) {
+        setError('Este email ya está registrado. ¿Querés iniciar sesión?')
+      } else {
+        setError(signUpError.message)
+      }
+      return
+    }
     navigate('/dashboard')
   }
 
@@ -81,9 +97,31 @@ export default function Register() {
             <Input label="Nombre de usuario" placeholder="quinchero99" icon={<User size={16} />} error={errors.username?.message} {...register('username')} />
             <Input label="Nombre completo" placeholder="Juan Pérez" error={errors.full_name?.message} {...register('full_name')} />
             <Input label="Email" type="email" placeholder="tu@email.com" icon={<Mail size={16} />} error={errors.email?.message} {...register('email')} />
+            <Input label="Confirmar email" type="email" placeholder="tu@email.com" icon={<Mail size={16} />} error={errors.confirmEmail?.message} {...register('confirmEmail')} />
             <Input label="Contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.password?.message} {...register('password')} />
             <Input label="Confirmar contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.confirmPassword?.message} {...register('confirmPassword')} />
-            {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+
+            <div>
+              <label className="text-sm font-medium text-union-blue-light block mb-1">Teléfono <span className="text-white/30 font-normal">(para avisos por WhatsApp)</span></label>
+              <p className="text-xs text-white/30 mb-2">Sin el 0 ni el 15. Ej: área <strong className="text-white/50">11</strong> · número <strong className="text-white/50">45678901</strong></p>
+              <div className="flex gap-2">
+                <div className="w-28">
+                  <Input placeholder="Área" icon={<Phone size={16} />} error={errors.phone_area?.message} {...register('phone_area')} inputMode="numeric" />
+                </div>
+                <div className="flex-1">
+                  <Input placeholder="Número" error={errors.phone_number?.message} {...register('phone_number')} inputMode="numeric" />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
+                {error}{' '}
+                {error.includes('ya está registrado') && (
+                  <Link to="/login" className="underline font-medium">Ir al login</Link>
+                )}
+              </p>
+            )}
             <Button type="submit" loading={isSubmitting} className="w-full" size="lg">Crear cuenta</Button>
           </form>
 

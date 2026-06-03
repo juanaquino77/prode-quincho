@@ -79,6 +79,9 @@ export default function Login() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input label="Email" type="email" placeholder="tu@email.com" icon={<Mail size={16} />} error={errors.email?.message} {...register('email')} />
             <Input label="Contraseña" type="password" placeholder="••••••••" icon={<Lock size={16} />} error={errors.password?.message} {...register('password')} />
+            <div className="text-right -mt-2">
+              <Link to="/forgot-password" className="text-xs text-union-blue/70 hover:text-union-blue transition-colors">¿Olvidaste tu contraseña?</Link>
+            </div>
             {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
             <Button type="submit" loading={isSubmitting} className="w-full" size="lg">Ingresar</Button>
           </form>
