@@ -106,10 +106,10 @@ export default function Register() {
               <p className="text-xs text-white/30 mb-2">Sin el 0 ni el 15. Ej: área <strong className="text-white/50">11</strong> · número <strong className="text-white/50">45678901</strong></p>
               <div className="flex gap-2">
                 <div className="w-28">
-                  <Input placeholder="Área" icon={<Phone size={16} />} error={errors.phone_area?.message} {...register('phone_area')} inputMode="numeric" maxLength={4} />
+                  <Input placeholder="Área" type="tel" icon={<Phone size={16} />} error={errors.phone_area?.message} {...register('phone_area')} maxLength={4} />
                 </div>
                 <div className="flex-1">
-                  <Input placeholder="Número" error={errors.phone_number?.message} {...register('phone_number')} inputMode="numeric" maxLength={8} />
+                  <Input placeholder="Número" type="tel" error={errors.phone_number?.message} {...register('phone_number')} maxLength={8} />
                 </div>
               </div>
             </div>

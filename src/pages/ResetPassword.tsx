@@ -19,17 +19,30 @@ type FormData = z.infer<typeof schema>
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
-  const [sessionReady, setSessionReady] = useState(false)
+  const [sessionReady, setSessionReady] = useState<boolean | null>(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
   useEffect(() => {
-    // Supabase procesa el token del link en el hash y dispara este evento
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setSessionReady(true)
+    // El evento puede llegar antes o después del mount — verificamos la sesión activa también
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setSessionReady(true)
     })
-    return () => subscription.unsubscribe()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') setSessionReady(true)
+    })
+
+    // Si el link expiró o ya fue usado, el evento nunca llega → mostramos error
+    const timeout = setTimeout(() => {
+      setSessionReady(null)
+    }, 8000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   async function onSubmit(data: FormData) {
@@ -53,10 +66,15 @@ export default function ResetPassword() {
         <div className="bg-union-navy-light border border-union-blue/20 rounded-2xl p-6 shadow-2xl">
           <h2 className="text-xl font-semibold text-white mb-2">Nueva contraseña</h2>
 
-          {!sessionReady ? (
+          {sessionReady === false ? (
             <div className="flex flex-col items-center py-6 gap-3">
               <div className="w-8 h-8 border-2 border-union-blue border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-white/40">Verificando el link...</p>
+            </div>
+          ) : sessionReady === null ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-red-400 mb-4">El link expiró o ya fue usado. Pedí uno nuevo.</p>
+              <a href="/forgot-password" className="text-sm text-union-blue hover:text-union-blue-light font-medium">Recuperar contraseña</a>
             </div>
           ) : (
             <>

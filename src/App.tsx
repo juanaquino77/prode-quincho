@@ -50,6 +50,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/unirse/:inviteCode" element={<JoinPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/predicciones" element={<Predictions />} />
