@@ -6,7 +6,7 @@ import { MatchCard } from '../components/matches/MatchCard'
 import { Button } from '../components/ui/Button'
 import { SpecialPredictionsCard } from '../components/predictions/SpecialPredictionsCard'
 import { useMatches } from '../hooks/useMatches'
-import { usePredictions, useUpsertPrediction } from '../hooks/usePredictions'
+import { usePredictions, useUpsertPrediction, usePredictionCompletion } from '../hooks/usePredictions'
 import { useSpecialPredictions, useUpsertSpecialPrediction } from '../hooks/useSpecialPredictions'
 import { useCorazonadas, useAddCorazonada, useRemoveCorazonada } from '../hooks/useCorazonada'
 import { useGlobalTournament, useUserTournaments, useCreatePayment } from '../hooks/useTournaments'
@@ -55,6 +55,9 @@ export default function Predictions() {
   const { data: predictions } = usePredictions(user?.id, selectedTournament?.id ?? '')
   const createPayment = useCreatePayment()
   const upsert = useUpsertPrediction()
+
+  const { total: predTotal, filled: predFilled, isComplete: predComplete, pct: predPct } =
+    usePredictionCompletion(user?.id, selectedTournament?.id ?? '', selectedTournament?.competition ?? null)
 
   const hasSpecial = selectedTournament?.has_special_predictions ?? false
   const { data: specialPred } = useSpecialPredictions(
@@ -428,6 +431,30 @@ export default function Predictions() {
             <span className="text-sm font-semibold text-union-blue">{selectedTournament.name}</span>
           </div>
         )
+      )}
+
+      {/* Progress bar */}
+      {predTotal > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40">Mis pronósticos</span>
+            <span className={cn(
+              'text-[11px] font-semibold',
+              predComplete ? 'text-green-400' : predPct > 0 ? 'text-yellow-400' : 'text-white/30'
+            )}>
+              {predComplete ? '✓ Completo' : `${predFilled}/${predTotal}`}
+            </span>
+          </div>
+          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                predComplete ? 'bg-green-500' : predPct > 0 ? 'bg-yellow-400' : 'bg-white/10'
+              )}
+              style={{ width: `${predPct}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Special predictions */}

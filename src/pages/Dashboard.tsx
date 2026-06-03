@@ -6,9 +6,10 @@ import { Button } from '../components/ui/Button'
 import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
-import { useSpecialPredictions } from '../hooks/useSpecialPredictions'
+import { useSpecialPredictions, } from '../hooks/useSpecialPredictions'
+import { usePredictionCompletion } from '../hooks/usePredictions'
 import { useTournamentStore } from '../store/tournamentStore'
-import { formatShortDate, resolveMatches } from '../lib/utils'
+import { formatShortDate, resolveMatches, cn } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
 
 // Muestra el emoji de bandera de país, o el escudo del club como fallback
@@ -56,6 +57,9 @@ export default function Dashboard() {
 
   const hasLive = matches.some((m) => m.status === 'live')
   const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
+
+  const { total: predTotal, filled: predFilled, isComplete: predComplete, pct: predPct } =
+    usePredictionCompletion(user?.id, activeTournamentId ?? '', activeTournament?.competition ?? null)
 
   const hasSpecial = globalTournament?.has_special_predictions ?? false
   const { data: specialPred } = useSpecialPredictions(
@@ -106,6 +110,32 @@ export default function Dashboard() {
               <p className="text-xs text-amber-400/70 mt-0.5">Elegí campeón, goleador y mejor jugador antes del 11 de junio.</p>
             </div>
             <ArrowRight size={15} className="text-amber-400 shrink-0" />
+          </div>
+        </Link>
+      )}
+
+      {/* Progress bar */}
+      {predTotal > 0 && (
+        <Link to="/predicciones" className="block mb-5">
+          <div className="bg-union-navy-light border border-union-blue/20 rounded-xl px-4 py-3 hover:border-union-blue/40 transition-colors">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] text-white/40">Mis pronósticos</span>
+              <span className={cn(
+                'text-[11px] font-semibold',
+                predComplete ? 'text-green-400' : predPct > 0 ? 'text-yellow-400' : 'text-white/30'
+              )}>
+                {predComplete ? '✓ Completo' : `${predFilled}/${predTotal}`}
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  predComplete ? 'bg-green-500' : predPct > 0 ? 'bg-yellow-400' : 'bg-white/10'
+                )}
+                style={{ width: `${predPct}%` }}
+              />
+            </div>
           </div>
         </Link>
       )}

@@ -1,6 +1,44 @@
+import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useMatches } from './useMatches'
 import type { Prediction } from '../types'
+import { STAGE_ORDER } from '../types'
+
+export function usePredictionCompletion(
+  userId: string | undefined,
+  tournamentId: string,
+  competition: string | null,
+) {
+  const { data: matches } = useMatches(competition ?? undefined)
+  const { data: predictions } = usePredictions(userId, tournamentId)
+
+  return useMemo(() => {
+    const allMatches = matches ?? []
+    let countableMatches = allMatches
+
+    if (competition === 'apertura_2026') {
+      const stageSet = new Set(allMatches.map((m) => m.stage))
+      const orderedStages = STAGE_ORDER.filter((s) => stageSet.has(s))
+      const firstLockedIdx = orderedStages.findIndex((_stage, i) => {
+        if (i === 0) return false
+        const prevStage = orderedStages[i - 1]
+        return allMatches.some((m) => m.stage === prevStage && m.status !== 'finished')
+      })
+      const openStages = new Set(
+        firstLockedIdx === -1 ? orderedStages : orderedStages.slice(0, firstLockedIdx)
+      )
+      countableMatches = allMatches.filter((m) => openStages.has(m.stage))
+    }
+
+    const matchIds = new Set(countableMatches.map((m) => m.id))
+    const total = countableMatches.length
+    const filled = (predictions ?? []).filter((p) => matchIds.has(p.match_id)).length
+    const isComplete = total > 0 && filled >= total
+    const pct = total > 0 ? Math.round((filled / total) * 100) : 0
+    return { total, filled, isComplete, pct }
+  }, [matches, predictions, competition])
+}
 
 export interface TournamentWithPredictionCount {
   id: string
