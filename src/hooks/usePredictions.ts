@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useMatches } from './useMatches'
-import type { Prediction } from '../types'
-import { STAGE_ORDER } from '../types'
+import type { Prediction, MatchStage } from '../types'
+
+const STAGE_ORDER: MatchStage[] = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
 
 export function usePredictionCompletion(
   userId: string | undefined,
@@ -19,8 +20,8 @@ export function usePredictionCompletion(
 
     if (competition === 'apertura_2026') {
       const stageSet = new Set(allMatches.map((m) => m.stage))
-      const orderedStages = STAGE_ORDER.filter((s) => stageSet.has(s))
-      const firstLockedIdx = orderedStages.findIndex((_stage, i) => {
+      const orderedStages = STAGE_ORDER.filter((s: MatchStage) => stageSet.has(s))
+      const firstLockedIdx = orderedStages.findIndex((_stage: MatchStage, i: number) => {
         if (i === 0) return false
         const prevStage = orderedStages[i - 1]
         return allMatches.some((m) => m.stage === prevStage && m.status !== 'finished')
