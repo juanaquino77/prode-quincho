@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { useJoinTournament } from '../../hooks/useTournaments'
+import { CopyPredictionsSection } from './CopyPredictionsSection'
 import type { Tournament } from '../../types'
 
 interface Props {
@@ -48,17 +49,18 @@ export function JoinTournamentModal({ open, onClose, userId }: Props) {
           )}
         </div>
       ) : (
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 size={28} className="text-green-400" />
-          </div>
-          <div>
+        <div className="space-y-4">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 size={28} className="text-green-400" />
+            </div>
             <p className="text-white font-semibold text-lg">¡Te uniste!</p>
             <p className="text-union-blue mt-1 font-medium">{joined.name}</p>
             {joined.entry_fee > 0 && (
               <p className="text-yellow-400 text-sm mt-2">Inscripción: ${joined.entry_fee} ARS</p>
             )}
           </div>
+          <CopyPredictionsSection userId={userId} targetTournamentId={joined.id} />
           <Button onClick={handleClose} className="w-full">Ir al torneo</Button>
         </div>
       )}

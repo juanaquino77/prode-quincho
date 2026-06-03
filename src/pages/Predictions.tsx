@@ -28,6 +28,7 @@ export default function Predictions() {
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
   const hasSyncedStage = useRef(false)
+  const batchTournamentRef = useRef<string | undefined>(undefined)
 
   const allTournaments = useMemo<Tournament[]>(() => {
     // Preferir versión de myTournaments para el global (tiene user_paid)
@@ -113,25 +114,47 @@ export default function Predictions() {
   const firstInputRef = useRef<HTMLDivElement>(null)
   const warningRef = useRef<HTMLDivElement>(null)
 
-  // Inicializar batchValues con predicciones ya guardadas (sin pisar cambios del user)
+  // Inicializar/resetear batchValues al cambiar de torneo o al llegar predicciones nuevas
   useEffect(() => {
-    if (!predictions) return
-    setBatchValues((prev) => {
-      const next = { ...prev }
+    const currentId = selectedTournament?.id
+    const isNewTournament = currentId !== batchTournamentRef.current
+    batchTournamentRef.current = currentId
+
+    if (!predictions) {
+      if (isNewTournament) setBatchValues({})
+      return
+    }
+
+    if (isNewTournament) {
+      // Torneo nuevo: reemplazar todo
+      const next: Record<string, BatchVal> = {}
       for (const p of predictions) {
-        if (!next[p.match_id]) {
-          next[p.match_id] = {
-            home: p.home_score_pred?.toString() ?? '',
-            away: p.away_score_pred?.toString() ?? '',
-            penalty: p.penalty_pred ?? null,
-          }
+        next[p.match_id] = {
+          home: p.home_score_pred?.toString() ?? '',
+          away: p.away_score_pred?.toString() ?? '',
+          penalty: p.penalty_pred ?? null,
         }
       }
-      return next
-    })
-  }, [predictions])
+      setBatchValues(next)
+    } else {
+      // Mismo torneo: solo llenar slots vacíos (no pisar ediciones del usuario)
+      setBatchValues((prev) => {
+        const next = { ...prev }
+        for (const p of predictions) {
+          if (!next[p.match_id]) {
+            next[p.match_id] = {
+              home: p.home_score_pred?.toString() ?? '',
+              away: p.away_score_pred?.toString() ?? '',
+              penalty: p.penalty_pred ?? null,
+            }
+          }
+        }
+        return next
+      })
+    }
+  }, [predictions, selectedTournament?.id])
 
-  // Resetear feedback al cambiar de torneo (no al cambiar de grupo, para no pisar el feedback de guardado)
+  // Resetear feedback al cambiar de torneo
   useEffect(() => { setBatchSaved(false) }, [selectedTournamentId])
 
   // Focus primer input y resetear warnings al cambiar de grupo

@@ -9,6 +9,7 @@ import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { useCreateTournament } from '../../hooks/useTournaments'
 import { useTournamentTypesPublic } from '../../hooks/useTournamentTypes'
+import { CopyPredictionsSection } from './CopyPredictionsSection'
 import type { Tournament, TournamentTypePublic } from '../../types'
 
 // TODO: habilitar cuando haya múltiples competencias activas simultáneas
@@ -228,6 +229,7 @@ export function CreateTournamentModal({ open, onClose, userId }: Props) {
           <Button onClick={copyCode} variant="secondary" className="w-full">
             {copied ? <><Check size={16} className="mr-2" />Copiado!</> : <><Copy size={16} className="mr-2" />Copiar código</>}
           </Button>
+          <CopyPredictionsSection userId={userId} targetTournamentId={created.id} />
           <Button onClick={handleClose} className="w-full">Ir al torneo</Button>
         </div>
       )}
