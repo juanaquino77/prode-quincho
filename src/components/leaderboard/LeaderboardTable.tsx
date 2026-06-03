@@ -11,9 +11,10 @@ interface LeaderboardTableProps {
   tournamentId?: string
   competition?: string | null
   showRivalPredictions?: 'before' | 'after'
+  hasCorazonada?: boolean
 }
 
-export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions }: LeaderboardTableProps) {
+export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions, hasCorazonada }: LeaderboardTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
 
   function handleRowClick(entry: LeaderboardEntry) {
@@ -32,6 +33,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
               <th className="px-4 py-3 text-left text-xs font-semibold text-union-blue uppercase tracking-wider">Jugador</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider">Pts</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden sm:table-cell">Exactos</th>
+              {hasCorazonada && <th className="px-4 py-3 text-right text-xs font-semibold text-amber-400/70 uppercase tracking-wider hidden sm:table-cell">💛 Coraz.</th>}
               <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden md:table-cell">Resultados</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden lg:table-cell">Pronóst.</th>
             </tr>
@@ -83,6 +85,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-white/60 hidden sm:table-cell">{entry.exact_scores}</td>
+                  {hasCorazonada && <td className="px-4 py-3 text-right text-sm text-amber-400 hidden sm:table-cell">{entry.corazonadas_acertadas ?? 0}</td>}
                   <td className="px-4 py-3 text-right text-sm text-white/60 hidden md:table-cell">{entry.correct_outcomes}</td>
                   <td className="px-4 py-3 text-right text-sm text-white/40 hidden lg:table-cell">{entry.total_predictions}</td>
                 </tr>
@@ -90,7 +93,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
             })}
             {entries.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-white/30 text-sm">
+                <td colSpan={hasCorazonada ? 7 : 6} className="px-4 py-12 text-center text-white/30 text-sm">
                   Aún no hay pronósticos en este torneo
                 </td>
               </tr>

@@ -20,17 +20,17 @@ const SECTIONS = [
       { accion: 'Ganador/empate acertado sin resultado exacto (ej: predijiste 2-0, salió 1-0)', pts: '+1 pt' },
       { accion: 'Penales: acertás el ganador en penales',                        pts: '+1 pt' },
       { accion: 'Penales: errás el ganador (habiendo acertado el empate exacto)', pts: '−1 pt' },
-      { accion: '💛 Corazonada: acertás el resultado EXACTO del partido elegido', pts: '+5 pts' },
+      { accion: '💛 Corazonada: acertás el resultado EXACTO del partido elegido', pts: '5 pts total' },
       { accion: 'Predicciones especiales (campeón, goleador, MVP)',               pts: '+2 pts c/u' },
     ],
-    note: 'La Corazonada solo suma los 5 pts extra si acertás el marcador exacto. Si no acertás el exacto, no suma bonus (sí suma el punto normal de resultado si ganador/empate coincide).',
+    note: 'La Corazonada da 5 pts TOTALES si acertás el marcador exacto (en lugar de los 3 pts normales). Si solo acertás el resultado, sumás 1 pt como siempre.',
   },
   {
     emoji: '💛',
     title: 'Corazonada',
     items: [
-      'Fase de grupos: elegís 1 partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, sumás +5 pts extra.',
-      'Eliminatorias: cada fase (16avos, 8vos/cuartos, semis y final) tiene su propia Corazonada — elegís 1 partido por fase.',
+      'Fase de grupos: elegís 1 partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, el partido vale 5 pts totales (en lugar de 3).',
+      'Eliminatorias: en 16avos y cuartos de final también podés elegir 1 Corazonada por fase. Las semis y la final no tienen Corazonada.',
       'En partidos de eliminatorias que terminan en empate: si acertás el exacto del empate, los penales suman o restan 1 pt como cualquier otro resultado exacto de empate.',
       'La Corazonada no da bonus si solo acertás el ganador sin el marcador exacto.',
     ],
@@ -93,7 +93,7 @@ export function HowToPlayModal() {
 
         {/* Header sticky */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-union-blue/15 shrink-0">
-          <h2 className="text-base font-bold text-white">📖 Cómo jugar</h2>
+          <h2 className="text-base font-bold text-white">📖 Reglas</h2>
           <button
             onClick={closeHowToPlay}
             className="p-1.5 text-white/30 hover:text-white transition-colors rounded-lg hover:bg-white/5"

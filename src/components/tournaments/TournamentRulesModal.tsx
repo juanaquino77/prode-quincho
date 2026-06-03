@@ -62,9 +62,9 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
               <RuleRow
                 icon="💛"
                 label="1 Corazonada por grupo"
-                value={`+${bonus} pts`}
+                value={`${bonus} pts total`}
                 valueColor="text-amber-400"
-                description={`Elegí un partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, sumás ${bonus} puntos extra.`}
+                description={`Elegí un partido de cada grupo como tu Corazonada. Si acertás el exacto, vale ${bonus} pts totales (no 3). Si solo acertás el resultado, sumás 1 pt normal.`}
               />
               <RuleRow
                 icon="🔒"

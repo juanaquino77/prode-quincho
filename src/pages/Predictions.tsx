@@ -536,7 +536,7 @@ export default function Predictions() {
               highlighted={match.id === highlightMatchId}
               requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
               rules={selectedTournament!.rules}
-              corazonadaEnabled={hasCorazonada}
+              corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage ?? '')}
               isCorazonada={corazonadaByMatchId.has(match.id)}
               corazonadaLocked={isGroupLocked(match.group_name)}
               ptsCorazonadaBonus={ptsCorazonadaBonus}

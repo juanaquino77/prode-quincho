@@ -989,20 +989,18 @@ function useFriendTournaments() {
   return useQuery({
     queryKey: ['admin-friend-tournaments'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select(`
-          id, name, created_by, entry_fee, created_at,
-          tournament_members(count),
-          payments(status, amount)
-        `)
-        .eq('type', 'friends')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-      if (error) throw error
+      // Usamos RPC con SECURITY DEFINER para que el count no sea limitado por RLS
+      const [tournamentsRes, paymentsRes] = await Promise.all([
+        supabase.rpc('admin_get_friend_tournaments'),
+        supabase.from('payments').select('tournament_id, status, amount').eq('status', 'approved'),
+      ])
+      if (tournamentsRes.error) throw tournamentsRes.error
 
-      // Fetch creator usernames separately
-      const creatorIds = [...new Set((data ?? []).map((t: any) => t.created_by).filter(Boolean))]
+      const tournaments: any[] = tournamentsRes.data ?? []
+      const payments: any[] = paymentsRes.data ?? []
+
+      // Fetch creator usernames
+      const creatorIds = [...new Set(tournaments.map((t) => t.created_by).filter(Boolean))]
       let usernameMap: Record<string, string> = {}
       if (creatorIds.length > 0) {
         const { data: profiles } = await supabase
@@ -1012,19 +1010,17 @@ function useFriendTournaments() {
         usernameMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p.username]))
       }
 
-      return (data ?? []).map((t: any) => {
-        const members = t.tournament_members?.[0]?.count ?? 0
-        const payments: { status: string; amount: number }[] = t.payments ?? []
-        const approved = payments.filter((p) => p.status === 'approved')
+      return tournaments.map((t) => {
+        const approved = payments.filter((p) => p.tournament_id === t.id)
         return {
           id: t.id,
           name: t.name,
           created_by: t.created_by,
           creator_username: t.created_by ? (usernameMap[t.created_by] ?? '—') : '—',
           entry_fee: t.entry_fee,
-          member_count: members,
+          member_count: Number(t.member_count ?? 0),
           paid_count: approved.length,
-          total_collected: approved.reduce((sum: number, p) => sum + p.amount, 0),
+          total_collected: approved.reduce((sum: number, p: any) => sum + p.amount, 0),
           created_at: t.created_at,
         } as AdminTournament
       })

@@ -171,6 +171,7 @@ export interface LeaderboardEntry {
   exact_scores: number
   correct_outcomes: number
   total_predictions: number
+  corazonadas_acertadas?: number
   rank: number
 }
 
