@@ -524,7 +524,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                   <span className="opacity-40 group-hover:opacity-100 transition-opacity">💛</span>
                   <span className="group-hover:text-amber-300 transition-colors">
                     Corazonada {label}
-                    <span className="text-white/20 group-hover:text-amber-400/50"> (5 pts total si exacto)</span>
+                    <span className="text-white/20 group-hover:text-amber-400/50"> ({ptsCorazonadaBonus} pts total si exacto)</span>
                   </span>
                 </button>
               )
