@@ -15,12 +15,17 @@ CREATE TABLE IF NOT EXISTS public.corazonadas (
   created_at    timestamptz DEFAULT now()
 );
 ALTER TABLE public.corazonadas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Usuarios ven sus propias corazonadas"
-  ON public.corazonadas FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Usuarios insertan sus corazonadas"
-  ON public.corazonadas FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Usuarios borran sus corazonadas"
-  ON public.corazonadas FOR DELETE USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='corazonadas' AND policyname='Usuarios ven sus propias corazonadas') THEN
+    CREATE POLICY "Usuarios ven sus propias corazonadas" ON public.corazonadas FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='corazonadas' AND policyname='Usuarios insertan sus corazonadas') THEN
+    CREATE POLICY "Usuarios insertan sus corazonadas" ON public.corazonadas FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='corazonadas' AND policyname='Usuarios borran sus corazonadas') THEN
+    CREATE POLICY "Usuarios borran sus corazonadas" ON public.corazonadas FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- 2. calculate_points: ahora acepta flag de corazonada
 --    Cuando p_is_corazonada=true y resultado exacto → p_pts_corazonada pts TOTALES
