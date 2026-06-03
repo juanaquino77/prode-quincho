@@ -95,16 +95,16 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
   const [isEditing, setIsEditing] = useState(false)
   const [showWarn, setShowWarn] = useState(false)
 
-  // Sync inputs when prediction arrives from React Query (async load)
+  // Sync inputs when prediction changes (tournament switch or async load)
   useEffect(() => {
-    if (prediction) {
-      setHome(prediction.home_score_pred?.toString() ?? '')
-      setAway(prediction.away_score_pred?.toString() ?? '')
-      setPenaltyPred(prediction.penalty_pred ?? null)
-      setCommittedPenalty(prediction.penalty_pred ?? null)
-      setIsEditing(false)
-    }
-  }, [prediction?.home_score_pred, prediction?.away_score_pred, prediction?.penalty_pred])
+    setHome(prediction?.home_score_pred?.toString() ?? '')
+    setAway(prediction?.away_score_pred?.toString() ?? '')
+    setPenaltyPred(prediction?.penalty_pred ?? null)
+    setCommittedPenalty(prediction?.penalty_pred ?? null)
+    setIsEditing(false)
+  // prediction?.id garantiza que el efecto corre cuando cambia de torneo aunque los scores sean iguales
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prediction?.id, prediction?.home_score_pred, prediction?.away_score_pred, prediction?.penalty_pred])
 
   const isKnockout = KNOCKOUT_STAGES.includes(match.stage)
   const hVal = parseInt(home)
