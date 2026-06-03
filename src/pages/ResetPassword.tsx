@@ -19,13 +19,21 @@ type FormData = z.infer<typeof schema>
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  // false = esperando sesión, true = listo, null = link inválido/expirado
   const [sessionReady, setSessionReady] = useState<boolean | null>(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
   useEffect(() => {
-    // El evento puede llegar antes o después del mount — verificamos la sesión activa también
+    // Supabase pone ?error=... en la URL cuando el link realmente expiró o ya fue usado
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error')) {
+      setSessionReady(null)
+      return
+    }
+
+    // Verificamos si ya hay sesión activa (e.g. el token se procesó antes del mount)
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setSessionReady(true)
     })
@@ -34,15 +42,7 @@ export default function ResetPassword() {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') setSessionReady(true)
     })
 
-    // Si el link expiró o ya fue usado, el evento nunca llega → mostramos error
-    const timeout = setTimeout(() => {
-      setSessionReady(null)
-    }, 8000)
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(timeout)
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   async function onSubmit(data: FormData) {
