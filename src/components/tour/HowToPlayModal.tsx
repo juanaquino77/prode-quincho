@@ -21,10 +21,19 @@ const SECTIONS = [
       { accion: 'Penales: acertás el ganador en penales',                        pts: '+1 pt' },
       { accion: 'Penales: errás el ganador (habiendo acertado el empate exacto)', pts: '−1 pt' },
       { accion: '💛 Corazonada: acertás el resultado EXACTO del partido elegido', pts: '+5 pts' },
-      { accion: '💛 Corazonada: acertás solo el ganador (sin resultado exacto)',  pts: '+1 pt (normal)' },
       { accion: 'Predicciones especiales (campeón, goleador, MVP)',               pts: '+2 pts c/u' },
     ],
-    note: 'La corazonada es un partido especial que cada jugador elige por grupo. Solo suma los 5 pts si el resultado es exacto.',
+    note: 'La Corazonada solo suma los 5 pts extra si acertás el marcador exacto. Si no acertás el exacto, no suma bonus (sí suma el punto normal de resultado si ganador/empate coincide).',
+  },
+  {
+    emoji: '💛',
+    title: 'Corazonada',
+    items: [
+      'Fase de grupos: elegís 1 partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, sumás +5 pts extra.',
+      'Eliminatorias: cada fase (16avos, 8vos/cuartos, semis y final) tiene su propia Corazonada — elegís 1 partido por fase.',
+      'En partidos de eliminatorias que terminan en empate: si acertás el exacto del empate, los penales suman o restan 1 pt como cualquier otro resultado exacto de empate.',
+      'La Corazonada no da bonus si solo acertás el ganador sin el marcador exacto.',
+    ],
   },
   {
     emoji: '⏰',
@@ -43,6 +52,21 @@ const SECTIONS = [
       'Torneos de Amigos: privados, con código de invitación. Podés crear uno o unirte al de un amigo.',
       'Para unirte a torneos de amigos necesitás estar inscripto en el torneo global primero.',
       'Los torneos de amigos pueden ser gratuitos o tener su propia entrada. El club recibe un 10% de los torneos pagos.',
+    ],
+  },
+  {
+    emoji: '🏅',
+    title: 'Premios',
+    items: [
+      '— AL FINALIZAR LA FASE DE GRUPOS —',
+      '🥇 1er puesto: $200.000 ARS (mínimo)',
+      '🥈 2do puesto: indumentaria del club',
+      '🥉 3er puesto: indumentaria del club',
+      '— AL FINALIZAR EL MUNDIAL —',
+      '🥇 1er puesto: $500.000 ARS (mínimo)',
+      '🥈 2do puesto: $200.000 ARS (mínimo)',
+      '🥉 3er puesto: $100.000 ARS (mínimo)',
+      '⚠️ Los montos son mínimos garantizados. Si la recaudación supera lo esperado, los premios suben proporcionalmente.',
     ],
   },
   {
