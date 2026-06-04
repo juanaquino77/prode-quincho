@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Mail, Lock, Trophy } from 'lucide-react'
+import { Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
@@ -41,9 +41,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-blue rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(0,168,222,0.4)]">
-            <Trophy size={36} className="text-white" />
-          </div>
+          <img src="/4.png" alt="El Quincho" className="w-28 h-28 object-contain mx-auto mb-4 drop-shadow-[0_0_20px_rgba(0,168,222,0.35)]" />
           <h1 className="text-3xl font-bold text-white">Prode Quincho</h1>
           <p className="text-white/50 mt-1">Mundial 2026 · El Quincho</p>
           <div className="mt-3 inline-flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full px-4 py-1.5">
