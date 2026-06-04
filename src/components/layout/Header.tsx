@@ -73,9 +73,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-gradient-blue rounded-full flex items-center justify-center">
-              <Trophy size={18} className="text-white" />
-            </div>
+            <img src="/club-union-2.png" alt="El Quincho" className="w-9 h-9 object-contain" />
             <span className="font-bold text-white text-lg hidden sm:block whitespace-nowrap">Prode Quincho</span>
           </Link>
 
