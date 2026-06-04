@@ -46,7 +46,7 @@ function GlobalTournamentBanner() {
           onClick={() => navigate(`/predicciones?t=${globalInMyList.id}`)}
           className="shrink-0 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
         >
-          Presentar tarjeta →
+          Subir resultados →
         </button>
       </div>
     </div>

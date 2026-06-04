@@ -765,7 +765,7 @@ export default function Predictions() {
               loading={createPayment.isPending}
             >
               <CreditCard size={16} className="mr-2" />
-              Presentar tarjeta — ${selectedTournament.entry_fee} ARS
+              Subir resultados — ${selectedTournament.entry_fee} ARS
             </Button>
           </div>
         </div>
