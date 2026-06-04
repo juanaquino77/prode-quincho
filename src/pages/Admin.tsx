@@ -139,13 +139,34 @@ function ResultsTab() {
   const [scores, setScores] = useState<Record<string, { home: string; away: string; pen: string; status: string }>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [filterStage, setFilterStage] = useState<string>('group')
+  const [filterGroup, setFilterGroup] = useState<string>('A')
 
-  // Show only non-group matches (knockout) not yet finished, sorted by date
-  const relevant = (matches ?? [])
-    .filter((m) => m.stage !== 'group')
+  const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
+  const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
+  const KNOCKOUT = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
+
+  const allSorted = (matches ?? [])
+    .slice()
     .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
 
-  // Nombres resueltos solo para display — el save usa el match original para no pisar la BD
+  const relevant = allSorted.filter((m) =>
+    filterStage === 'group'
+      ? m.stage === 'group' && m.group_name === filterGroup
+      : m.stage === filterStage
+  )
+
+  // Etapas que tienen al menos 1 partido cargado
+  const existingStages = new Set(allSorted.map((m) => m.stage))
+  const availableStages = STAGES.filter((s) => existingStages.has(s as MatchStage))
+
+  // Grupos que tienen partidos
+  const existingGroups = new Set(
+    allSorted.filter((m) => m.stage === 'group').map((m) => m.group_name ?? '')
+  )
+  const availableGroups = GROUPS.filter((g) => existingGroups.has(g))
+
+  // Nombres resueltos solo para display
   const resolvedById = new Map(resolveMatches(matches ?? []).map((r) => [r.id, r]))
 
   function getRow(m: Match) {
@@ -178,12 +199,45 @@ function ResultsTab() {
     setTimeout(() => setSaved((prev) => ({ ...prev, [m.id]: false })), 2000)
   }
 
-  const KNOCKOUT = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
-
   if (isLoading) return <p className="text-white/40">Cargando...</p>
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Stage tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        {availableStages.map((s) => (
+          <button
+            key={s}
+            onClick={() => { setFilterStage(s); if (s === 'group') setFilterGroup('A') }}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
+              filterStage === s ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'
+            )}
+          >
+            {getStageName(s as MatchStage)}
+          </button>
+        ))}
+      </div>
+
+      {/* Group tabs */}
+      {filterStage === 'group' && availableGroups.length > 0 && (
+        <div className="flex gap-1 flex-wrap">
+          {availableGroups.map((g) => (
+            <button
+              key={g}
+              onClick={() => setFilterGroup(g)}
+              className={cn(
+                'w-9 h-9 rounded-lg text-xs font-bold transition-colors',
+                filterGroup === g ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/40 hover:text-white'
+              )}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Match cards */}
       {relevant.map((m) => {
         const row = getRow(m)
         const homeVal = parseInt(row.home)
@@ -194,11 +248,10 @@ function ResultsTab() {
 
         return (
           <Card key={m.id} className="space-y-2">
-            {/* Match header */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Badge variant={m.status === 'finished' ? 'gray' : m.status === 'live' ? 'green' : 'blue'}>
-                  {getStageName(m.stage)}
+                  {getStageName(m.stage)}{m.group_name ? ` ${m.group_name}` : ''}
                 </Badge>
                 <span className="text-xs text-white/40">{formatShortDate(m.match_date)}</span>
               </div>
@@ -213,7 +266,6 @@ function ResultsTab() {
               </select>
             </div>
 
-            {/* Score row */}
             <div className="flex items-center gap-2">
               <span className="flex-1 text-sm font-semibold text-white truncate text-right">{resolvedById.get(m.id)?.home_team ?? m.home_team}</span>
               <input
@@ -237,7 +289,6 @@ function ResultsTab() {
               </Button>
             </div>
 
-            {/* Penalty row */}
             {showPen && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-yellow-400 font-semibold">Pen:</span>
@@ -256,7 +307,7 @@ function ResultsTab() {
         )
       })}
       {relevant.length === 0 && (
-        <Card className="text-center py-8 text-white/40 text-sm">No hay partidos eliminatorios cargados</Card>
+        <Card className="text-center py-8 text-white/40 text-sm">No hay partidos en esta etapa</Card>
       )}
     </div>
   )
