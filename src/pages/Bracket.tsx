@@ -15,7 +15,9 @@ const KNOCKOUT_STAGES: MatchStage[] = [
 ]
 
 // Altura fija por fila del grid (px). Debe ser >= altura de una BracketMatch card.
-const ROW_H = 112
+const ROW_H = 130
+// Ancho de cada card de partido
+const CARD_W = 240
 
 // ─── Single team row inside a bracket card ───────────────────
 function TeamRow({
@@ -39,7 +41,7 @@ function TeamRow({
       <div className="flex-shrink-0">
         <ClubFlag teamName={name} size={22} />
       </div>
-      <span className={`text-xs font-semibold flex-1 truncate ${
+      <span className={`text-xs font-semibold flex-1 leading-tight ${
         finished && isActualWinner ? 'text-white' : 'text-white/70'
       }`}>
         {name}
@@ -109,7 +111,7 @@ function BracketMatch({ match, prediction, tournamentId }: {
 
   return (
     <div
-      className={`bg-union-navy border border-union-blue/15 rounded-xl overflow-hidden w-[210px] transition-colors ${
+      className={`bg-union-navy border border-union-blue/15 rounded-xl overflow-hidden transition-colors ${
         isNavigable ? 'cursor-pointer hover:border-union-blue/50 hover:bg-union-navy-light/50' : 'opacity-60'
       }`}
       onClick={handleClick}
@@ -231,8 +233,8 @@ export default function Bracket() {
               className="mb-3"
               style={{
                 display: 'grid',
-                gridTemplateColumns: activeStages.map(() => '210px').join(' '),
-                columnGap: '24px',
+                gridTemplateColumns: activeStages.map(() => `${CARD_W}px`).join(' '),
+                columnGap: '32px',
               }}
             >
               {activeStages.map((stage) => (
@@ -248,6 +250,7 @@ export default function Bracket() {
                 display: 'grid',
                 gridTemplateColumns: activeStages.map(() => '210px').join(' '),
                 gridTemplateRows: `repeat(${baseCount}, ${ROW_H}px)`,
+                rowGap: '8px',
                 columnGap: '24px',
               }}
             >
