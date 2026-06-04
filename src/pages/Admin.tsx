@@ -82,7 +82,10 @@ function useFreepassReasons() {
   return useQuery({
     queryKey: ['admin-freepass-reasons'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('admin_list_freepass_reasons')
+      const { data, error } = await supabase
+        .from('freepass_reason_options')
+        .select('id, label, created_at')
+        .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []) as FreepassReasonOption[]
     },
@@ -93,7 +96,9 @@ function useAddFreepassReason() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (label: string) => {
-      const { error } = await supabase.rpc('admin_upsert_freepass_reason', { p_label: label })
+      const { error } = await supabase
+        .from('freepass_reason_options')
+        .insert({ label })
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-freepass-reasons'] }),
@@ -104,7 +109,10 @@ function useDeleteFreepassReason() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('admin_delete_freepass_reason', { p_id: id })
+      const { error } = await supabase
+        .from('freepass_reason_options')
+        .delete()
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-freepass-reasons'] }),
@@ -1007,53 +1015,65 @@ function TournamentTypesTab() {
 }
 
 function FreepassReasonsSection() {
-  const { data: reasons = [], isLoading } = useFreepassReasons()
+  const { data: reasons = [], isLoading, error } = useFreepassReasons()
   const addReason = useAddFreepassReason()
   const deleteReason = useDeleteFreepassReason()
   const [newLabel, setNewLabel] = useState('')
+  const [savedMsg, setSavedMsg] = useState(false)
 
   async function handleAdd() {
     const label = newLabel.trim()
     if (!label) return
     await addReason.mutateAsync(label)
     setNewLabel('')
+    setSavedMsg(true)
+    setTimeout(() => setSavedMsg(false), 2500)
   }
 
   return (
     <div className="mt-8">
       <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Motivos de pase libre</p>
-      <Card className="space-y-3">
+      <Card className="space-y-4 p-5">
         {isLoading ? (
-          <p className="text-white/30 text-xs">Cargando...</p>
+          <p className="text-white/30 text-sm">Cargando...</p>
+        ) : error ? (
+          <p className="text-red-400 text-sm">Error al cargar motivos: {(error as Error).message}</p>
         ) : reasons.length === 0 ? (
-          <p className="text-white/30 text-xs">No hay motivos configurados aún.</p>
+          <p className="text-white/30 text-sm">No hay motivos configurados aún.</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {reasons.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-2 bg-union-navy rounded-lg px-3 py-2">
+              <div key={r.id} className="flex items-center justify-between gap-3 bg-union-navy rounded-xl px-4 py-3">
                 <span className="text-sm text-white">{r.label}</span>
                 <button
                   onClick={() => deleteReason.mutate(r.id)}
-                  className="p-1 text-white/30 hover:text-red-400 transition-colors"
+                  disabled={deleteReason.isPending}
+                  className="p-1.5 text-white/30 hover:text-red-400 transition-colors"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             placeholder="Nuevo motivo..."
-            className="flex-1 bg-union-navy border border-union-blue/30 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-union-blue"
+            className="flex-1 bg-union-navy border border-union-blue/30 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-union-blue"
           />
-          <Button onClick={handleAdd} loading={addReason.isPending} className="shrink-0">
-            <Plus size={14} />
+          <Button onClick={handleAdd} loading={addReason.isPending} className="shrink-0 px-4">
+            <Plus size={14} className="mr-1" />Agregar
           </Button>
         </div>
+        {savedMsg && (
+          <p className="text-green-400 text-sm font-medium">✓ Motivo guardado</p>
+        )}
+        {addReason.isError && (
+          <p className="text-red-400 text-sm">{(addReason.error as Error).message}</p>
+        )}
       </Card>
     </div>
   )
@@ -1247,6 +1267,8 @@ interface AdminMember {
   avatar_url: string | null
   paid: boolean
   joined_at: string
+  payment_method: 'mercadopago' | 'online' | 'manual' | 'freepass' | null
+  freepass_reason: string | null
 }
 
 interface AdminUserMembership {
@@ -1642,57 +1664,109 @@ function TorneosTab() {
 }
 
 // ─── Tournament members modal ─────────────────────────────────
+function PaymentMethodBadge({ method, reason }: { method: AdminMember['payment_method']; reason: string | null }) {
+  if (method === 'mercadopago') return (
+    <span className="shrink-0 text-xs bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-lg font-semibold">MercadoPago</span>
+  )
+  if (method === 'online') return (
+    <span className="shrink-0 text-xs bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-lg font-semibold">Online</span>
+  )
+  if (method === 'freepass') return (
+    <span className="shrink-0 text-xs bg-yellow-500/20 text-yellow-300 px-2.5 py-1 rounded-lg font-semibold" title={reason ?? ''}>
+      Pase libre{reason ? ` · ${reason}` : ''}
+    </span>
+  )
+  if (method === 'manual') return (
+    <span className="shrink-0 text-xs bg-green-500/15 text-green-300 px-2.5 py-1 rounded-lg font-semibold">Transferencia</span>
+  )
+  return null
+}
+
 function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTournament; onClose: () => void }) {
   const { data: members = [], isLoading } = useAdminTournamentMembers(tournament.id)
   const setMemberPaid = useAdminSetMemberPaid()
+  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
+
+  const filtered = filter === 'all' ? members : filter === 'paid' ? members.filter(m => m.paid) : members.filter(m => !m.paid)
+  const paidCount = members.filter(m => m.paid).length
 
   return (
     <Modal open onClose={onClose} title={`Participantes — ${tournament.name}`}>
+      {/* Resumen */}
+      <div className="flex items-center gap-4 mb-4 pb-4 border-b border-union-blue/10">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-white">{members.length}</p>
+          <p className="text-xs text-white/40">total</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-green-400">{paidCount}</p>
+          <p className="text-xs text-white/40">pagaron</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-red-400">{members.length - paidCount}</p>
+          <p className="text-xs text-white/40">sin pago</p>
+        </div>
+        {/* Filtro */}
+        <div className="ml-auto flex gap-1">
+          {(['all', 'paid', 'unpaid'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
+                filter === f ? 'bg-union-blue text-white' : 'bg-union-navy text-white/40 hover:text-white'
+              )}>
+              {f === 'all' ? 'Todos' : f === 'paid' ? 'Pagaron' : 'Sin pago'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isLoading ? (
-        <p className="text-white/40 text-sm">Cargando...</p>
-      ) : members.length === 0 ? (
-        <p className="text-white/40 text-sm text-center py-4">Sin participantes aún</p>
+        <p className="text-white/40 text-sm py-4 text-center">Cargando...</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-white/40 text-sm text-center py-6">Sin participantes en este filtro</p>
       ) : (
-        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-          {members.map((m) => (
-            <div key={m.user_id} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+          {filtered.map((m) => (
+            <div key={m.user_id} className="flex items-center gap-3 py-1">
+              <div className="w-9 h-9 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
                 {m.avatar_url ? (
-                  <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  <img src={m.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
                 ) : (
-                  <span className="text-xs font-bold text-union-blue">
+                  <span className="text-sm font-bold text-union-blue">
                     {(m.username ?? '?')[0].toUpperCase()}
                   </span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{m.username ?? '—'}</p>
+                <p className="text-sm font-semibold text-white truncate">{m.username ?? '—'}</p>
                 <p className="text-xs text-white/30">
-                  {new Date(m.joined_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  Ingresó: {new Date(m.joined_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
-              {tournament.entry_fee > 0 ? (
-                <button
-                  onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
-                  disabled={setMemberPaid.isPending}
-                  className={cn(
-                    'shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
-                    m.paid
-                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                      : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
-                  )}
-                >
-                  {m.paid ? '✓ Pagado' : 'Sin pago'}
-                </button>
-              ) : (
-                <span className="shrink-0 text-xs text-white/20">Gratis</span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {m.paid && <PaymentMethodBadge method={m.payment_method} reason={m.freepass_reason} />}
+                {tournament.entry_fee > 0 ? (
+                  <button
+                    onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
+                    disabled={setMemberPaid.isPending}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                      m.paid
+                        ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
+                        : 'bg-union-navy text-white/50 hover:text-white hover:bg-union-blue/20'
+                    )}
+                  >
+                    {m.paid ? '✓ Pagado' : 'Sin pago'}
+                  </button>
+                ) : (
+                  <span className="text-xs text-white/20 px-2">Gratis</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
-      <p className="text-xs text-white/30 mt-3 text-right pt-3 border-t border-union-blue/10">
-        {members.length} participante{members.length !== 1 ? 's' : ''}
+      <p className="text-xs text-white/30 mt-4 pt-3 border-t border-union-blue/10 text-right">
+        {filtered.length} de {members.length} participante{members.length !== 1 ? 's' : ''}
       </p>
     </Modal>
   )
