@@ -26,8 +26,39 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
 
-  // Modo force: envía anuncio a todos los miembros de torneos activos
   const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
+
+  // Modo mundial_countdown: aviso a TODOS los usuarios registrados
+  if (body.blast_type === 'mundial_countdown') {
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+
+    // Kick-off: México vs Sudáfrica — 11 jun 2026 20:00 CDT = 12 jun 01:00 UTC
+    const KICKOFF_UTC = new Date('2026-06-12T01:00:00Z')
+    const now = new Date()
+    const diffMs = KICKOFF_UTC.getTime() - now.getTime()
+    const diffHours = Math.max(0, Math.floor(diffMs / 3_600_000))
+    const days = Math.floor(diffHours / 24)
+    const hours = diffHours % 24
+
+    let sent = 0
+    for (const u of allUsers) {
+      if (!u.email) continue
+      await fetch(RESEND_API, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'El Quincho <noreply@prode-quincho.vercel.app>',
+          to: u.email,
+          subject: `⚽ El Mundial arranca en ${days > 0 ? `${days} días` : `${hours} horas`} — ¡Cargá tus pronósticos!`,
+          html: buildMundialCountdownHtml(days, hours),
+        }),
+      })
+      sent++
+    }
+    return json({ ok: true, sent })
+  }
+
+  // Modo force: envía anuncio a todos los miembros de torneos activos
   if (body.force) {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
     const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
@@ -176,6 +207,48 @@ Deno.serve(async (req) => {
 
   return json({ ok: true, totalSent })
 })
+
+function buildMundialCountdownHtml(days: number, hours: number): string {
+  const countdown = days > 0
+    ? `<span style="font-size:36px;font-weight:900;color:#00a8de;">${days} días</span> <span style="color:rgba(255,255,255,0.5);font-size:20px;">y ${hours}h</span>`
+    : `<span style="font-size:36px;font-weight:900;color:#f59e0b;">${hours} horas</span>`
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+    <div style="text-align:center;margin-bottom:8px;"><span style="font-size:56px;">🏆</span></div>
+    <div style="text-align:center;margin-bottom:28px;">
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;">El Quincho · Club Unión</p>
+    </div>
+    <div style="background:#0d1f3c;border:1px solid rgba(0,168,222,0.25);border-radius:16px;padding:32px;">
+      <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#ffffff;text-align:center;">¡El Mundial 2026 arranca en</h1>
+      <div style="text-align:center;margin:16px 0;">${countdown}</div>
+      <div style="border-top:1px solid rgba(0,168,222,0.15);border-bottom:1px solid rgba(0,168,222,0.15);padding:16px 0;margin:20px 0;text-align:center;">
+        <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.4);">Premio total acumulado</p>
+        <p style="margin:4px 0 0;font-size:28px;font-weight:900;color:#f59e0b;">+ $1.000.000</p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">El pozo crece con cada inscripción</p>
+      </div>
+      <p style="margin:0 0 8px;font-size:15px;color:rgba(255,255,255,0.85);line-height:1.6;text-align:center;">
+        <strong style="color:#ffffff;">¿Ya cargaste todos tus pronósticos?</strong><br>
+        Tenés hasta el arranque de cada partido para modificarlos.
+      </p>
+      <p style="margin:16px 0 24px;font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;text-align:center;">
+        El primer partido es el <strong style="color:rgba(255,255,255,0.8);">miércoles 11 de junio</strong><br>
+        🇲🇽 México vs Sudáfrica 🇿🇦
+      </p>
+      <div style="text-align:center;">
+        <a href="https://prode-quincho.vercel.app/predicciones" style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;">
+          Cargar mis pronósticos →
+        </a>
+      </div>
+    </div>
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">El Quincho · Club Unión Mar del Plata</p>
+  </div>
+</body>
+</html>`
+}
 
 function stageLabel(stage: string): string {
   const map: Record<string, string> = {
