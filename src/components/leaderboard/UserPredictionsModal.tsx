@@ -4,6 +4,8 @@ import { Modal } from '../ui/Modal'
 import { ClubFlag } from '../ui/ClubFlag'
 import { useMatches } from '../../hooks/useMatches'
 import { usePredictions } from '../../hooks/usePredictions'
+import { useCorazonadas } from '../../hooks/useCorazonada'
+import { useSpecialPredictions } from '../../hooks/useSpecialPredictions'
 import { calcPoints, getStageName, resolveMatches, cn } from '../../lib/utils'
 import type { LeaderboardEntry } from '../../types'
 import { STAGE_ORDER } from '../../lib/stageOrder'
@@ -16,11 +18,22 @@ interface Props {
   competition?: string | null
   isAdmin?: boolean
   showRivalPredictions?: 'before' | 'after'
+  hasCorazonada?: boolean
+  hasSpecialPredictions?: boolean
 }
 
-export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin, showRivalPredictions = 'after' }: Props) {
+export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin, showRivalPredictions = 'after', hasCorazonada, hasSpecialPredictions }: Props) {
   const { data: matches } = useMatches(competition ?? undefined)
   const { data: predictions, isLoading } = usePredictions(entry?.user_id, tournamentId)
+  const { data: corazonadas = [] } = useCorazonadas(
+    isAdmin && hasCorazonada ? entry?.user_id : undefined,
+    isAdmin && hasCorazonada ? tournamentId : undefined,
+  )
+  const { data: specialPred } = useSpecialPredictions(
+    isAdmin && hasSpecialPredictions ? entry?.user_id : undefined,
+    isAdmin && hasSpecialPredictions ? tournamentId : undefined,
+  )
+  const corazonadaMatchIds = useMemo(() => new Set(corazonadas.map(c => c.match_id)), [corazonadas])
 
   const predMap = useMemo(
     () => new Map((predictions ?? []).map((p) => [p.match_id, p])),
@@ -69,6 +82,27 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
         <p className="text-[11px] text-white/30 mb-3 italic">Solo se muestran pronósticos de partidos ya cerrados</p>
       )}
 
+      {/* Predicciones especiales (solo admin) */}
+      {isAdmin && specialPred && (
+        <div className="mb-4 bg-union-navy rounded-xl p-3 border border-amber-500/20">
+          <p className="text-[10px] font-bold text-amber-400/70 uppercase tracking-widest mb-2">⭐ Predicciones especiales</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[10px] text-white/40 mb-0.5">Campeón</p>
+              <p className="text-xs font-semibold text-white">{specialPred.champion_team ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/40 mb-0.5">Goleador</p>
+              <p className="text-xs font-semibold text-white">{specialPred.top_scorer ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/40 mb-0.5">MVP</p>
+              <p className="text-xs font-semibold text-white">{specialPred.best_player ?? '—'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-center text-white/40 py-8 text-sm">Cargando pronósticos...</p>
       ) : (
@@ -85,19 +119,32 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
                   const pts = finished && pred
                     ? calcPoints(match, pred.home_score_pred, pred.away_score_pred, pred.penalty_pred)
                     : null
+                  const isCorazonada = corazonadaMatchIds.has(match.id)
 
                   return (
                     <div
                       key={match.id}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-union-navy border border-union-blue/10"
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-lg border',
+                        isCorazonada
+                          ? 'bg-amber-500/10 border-amber-500/30'
+                          : 'bg-union-navy border-union-blue/10'
+                      )}
                     >
+                      {/* Corazonada indicator */}
+                      {isAdmin && (
+                        <span className={cn('text-xs shrink-0', isCorazonada ? 'text-amber-400' : 'text-transparent')}>
+                          💛
+                        </span>
+                      )}
+
                       {/* Home */}
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
                         <ClubFlag teamName={match.home_team} size={18} />
                         <span className="text-xs text-white/70 truncate">{match.home_team}</span>
                       </div>
 
-                      {/* Score */}
+                      {/* Score prediction */}
                       <div className="flex items-center gap-1 shrink-0 text-center">
                         {pred ? (
                           <>
@@ -124,6 +171,13 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
                         )}
                       </div>
 
+                      {/* Actual result (admin only, when finished) */}
+                      {isAdmin && finished && (
+                        <span className="text-[10px] text-white/30 shrink-0">
+                          ({match.home_score}-{match.away_score})
+                        </span>
+                      )}
+
                       {/* Away */}
                       <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
                         <span className="text-xs text-white/70 truncate text-right">{match.away_team}</span>
@@ -143,6 +197,8 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
                           </span>
                         ) : finished ? (
                           <span className="text-[10px] text-white/20">–</span>
+                        ) : pred && !finished ? (
+                          <span className="text-[10px] text-white/20">pdte.</span>
                         ) : null}
                       </div>
                     </div>

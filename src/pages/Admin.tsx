@@ -17,6 +17,7 @@ import { formatShortDate, getStageName, resolveMatches } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { Match, MatchStage, TournamentTypeAdmin } from '../types'
 import { useIsAdmin, useIsOrganizer } from '../hooks/useAuth'
+import { UserPredictionsModal } from '../components/leaderboard/UserPredictionsModal'
 
 // Contexto de solo lectura para el panel de admin
 const ReadOnlyCtx = createContext(false)
@@ -660,6 +661,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [selectedReason, setSelectedReason] = useState<string>('')
+  const [predView, setPredView] = useState<{ tournamentId: string; competition: string | null; hasCorazonada: boolean; hasSpecialPredictions: boolean } | null>(null)
   // Per-tournament payment dialog
   const [payDialog, setPayDialog] = useState<{ tournamentId: string; tournamentName: string; entryFee: number } | null>(null)
   const [payMethod, setPayMethod] = useState<'transfer' | 'freepass'>('transfer')
@@ -670,6 +672,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
     setConfirmDelete(false)
     setShowReasonModal(false)
     setPayDialog(null)
+    setPredView(null)
     onClose()
   }
 
@@ -868,6 +871,29 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             )}
           </div>
 
+          {/* Pronósticos del usuario */}
+          {memberships && memberships.length > 0 && (
+            <div className="border border-union-blue/20 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Ver pronósticos</p>
+              <div className="flex flex-wrap gap-2">
+                {memberships.map((m) => (
+                  <button
+                    key={m.tournament_id}
+                    onClick={() => setPredView({
+                      tournamentId: m.tournament_id,
+                      competition: m.tournament_type === 'global' ? 'mundial_2026' : null,
+                      hasCorazonada: m.tournament_type === 'global',
+                      hasSpecialPredictions: m.tournament_type === 'global',
+                    })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-union-navy border border-union-blue/20 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:border-union-blue/50 transition-colors"
+                  >
+                    📊 {m.tournament_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Notificaciones — próximamente */}
           <div className="border border-union-blue/10 rounded-xl p-3 space-y-2 opacity-40 pointer-events-none select-none">
             <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Notificaciones (próximamente)</p>
@@ -907,6 +933,30 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           )}
         </div>
+      )}
+
+      {/* Modal: pronósticos del usuario */}
+      {predView && user && (
+        <UserPredictionsModal
+          open
+          onClose={() => setPredView(null)}
+          entry={{
+            user_id: user.user_id,
+            username: user.username ?? user.email ?? '—',
+            full_name: user.full_name,
+            avatar_url: user.avatar_url,
+            total_points: 0,
+            exact_scores: 0,
+            correct_outcomes: 0,
+            total_predictions: 0,
+            rank: 0,
+          }}
+          tournamentId={predView.tournamentId}
+          competition={predView.competition}
+          isAdmin
+          hasCorazonada={predView.hasCorazonada}
+          hasSpecialPredictions={predView.hasSpecialPredictions}
+        />
       )}
 
       {/* Modal: método y monto de pago por torneo */}
