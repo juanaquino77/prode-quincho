@@ -84,11 +84,12 @@ export default function Leaderboard() {
         <LeaderboardTable
           entries={leaderboard ?? []}
           currentUserId={user?.id}
-          isAdmin={profile?.is_admin ?? false}
+          isAdmin={profile?.is_admin || profile?.is_organizer || false}
           tournamentId={tournamentId}
           competition={selectedTournament?.competition}
           showRivalPredictions={selectedTournament?.show_rival_predictions}
           hasCorazonada={selectedTournament?.has_corazonada ?? false}
+          hasSpecialPredictions={selectedTournament?.has_special_predictions ?? false}
         />
       )}
     </Layout>
