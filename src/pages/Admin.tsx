@@ -623,11 +623,36 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [selectedReason, setSelectedReason] = useState<string>('')
+  // Per-tournament payment dialog
+  const [payDialog, setPayDialog] = useState<{ tournamentId: string; tournamentName: string; entryFee: number } | null>(null)
+  const [payMethod, setPayMethod] = useState<'transfer' | 'freepass'>('transfer')
+  const [payAmount, setPayAmount] = useState<string>('')
+  const [payNote, setPayNote] = useState<string>('')
 
   function handleClose() {
     setConfirmDelete(false)
     setShowReasonModal(false)
+    setPayDialog(null)
     onClose()
+  }
+
+  function openPayDialog(m: AdminUserMembership) {
+    setPayMethod('transfer')
+    setPayAmount(String(m.entry_fee || ''))
+    setPayNote('')
+    setPayDialog({ tournamentId: m.tournament_id, tournamentName: m.tournament_name, entryFee: m.entry_fee })
+  }
+
+  async function confirmPay() {
+    if (!user || !payDialog) return
+    await setMemberPaid.mutateAsync({
+      userId: user.user_id,
+      tournamentId: payDialog.tournamentId,
+      paid: true,
+      amount: payMethod === 'transfer' ? (Number(payAmount) || null) : null,
+      note: payMethod === 'freepass' ? (payNote || null) : (payNote || null),
+    })
+    setPayDialog(null)
   }
 
   function handleToggleFreePass() {
@@ -740,7 +765,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
           )}
 
           {/* Freepass por torneo */}
-          <div className="border border-union-blue/20 rounded-xl p-3 space-y-2.5">
+          <div className="border border-union-blue/20 rounded-xl p-3 space-y-3">
             <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Pago por torneo</p>
             {loadingMemberships ? (
               <p className="text-white/30 text-xs">Cargando...</p>
@@ -748,7 +773,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
               <p className="text-white/30 text-xs">No está inscripto en ningún torneo</p>
             ) : (
               memberships.map((m) => (
-                <div key={m.tournament_id} className="flex items-center justify-between gap-2">
+                <div key={m.tournament_id} className="flex items-center justify-between gap-2 py-1">
                   <div className="min-w-0">
                     <span className="text-sm text-white truncate block">{m.tournament_name}</span>
                     <span className="text-[11px] text-white/30">
@@ -757,14 +782,23 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                     </span>
                   </div>
                   <button
-                    onClick={() => setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: !m.paid })}
+                    onClick={() => {
+                      if (m.entry_fee === 0) return
+                      if (m.paid) {
+                        // Desmarcar directamente
+                        setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: false })
+                      } else {
+                        // Marcar → pedir método y monto
+                        openPayDialog(m)
+                      }
+                    }}
                     disabled={setMemberPaid.isPending || m.entry_fee === 0}
                     className={cn(
                       'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                       m.entry_fee === 0
                         ? 'bg-union-navy-light text-white/20 cursor-default'
                         : m.paid
-                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
                         : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
                     )}
                   >
@@ -814,6 +848,86 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           )}
         </div>
+      )}
+
+      {/* Modal: método y monto de pago por torneo */}
+      {payDialog && user && (
+        <Modal open onClose={() => setPayDialog(null)} title={`Registrar pago — ${payDialog.tournamentName}`}>
+          <div className="space-y-4">
+            <p className="text-xs text-white/50">
+              Registrá el pago de <span className="text-white font-semibold">{user.username}</span> en este torneo.
+            </p>
+
+            {/* Método */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Método de pago</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => { setPayMethod('transfer'); setPayAmount(String(payDialog.entryFee || '')) }}
+                  className={cn('py-3 rounded-xl text-sm font-semibold border transition-colors',
+                    payMethod === 'transfer'
+                      ? 'bg-green-500/20 border-green-500/40 text-green-400'
+                      : 'bg-union-navy border-union-blue/20 text-white/50 hover:text-white'
+                  )}
+                >
+                  💸 Transferencia
+                </button>
+                <button
+                  onClick={() => { setPayMethod('freepass'); setPayAmount('') }}
+                  className={cn('py-3 rounded-xl text-sm font-semibold border transition-colors',
+                    payMethod === 'freepass'
+                      ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
+                      : 'bg-union-navy border-union-blue/20 text-white/50 hover:text-white'
+                  )}
+                >
+                  🎟️ Pase libre
+                </button>
+              </div>
+            </div>
+
+            {/* Monto (solo si es transferencia) */}
+            {payMethod === 'transfer' && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Monto recibido</p>
+                <div className="flex items-center gap-2 bg-union-navy border border-union-blue/30 rounded-xl px-4 py-2.5">
+                  <span className="text-white/40 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    placeholder={String(payDialog.entryFee || 0)}
+                    className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+                  />
+                  <span className="text-white/30 text-xs">ARS</span>
+                </div>
+              </div>
+            )}
+
+            {/* Motivo */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                {payMethod === 'freepass' ? 'Motivo del pase libre' : 'Observación (opcional)'}
+              </p>
+              <select
+                value={payNote}
+                onChange={(e) => setPayNote(e.target.value)}
+                className="w-full bg-union-navy border border-union-blue/30 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-union-blue"
+              >
+                <option value="">— Sin motivo —</option>
+                {reasonOptions.map((r) => (
+                  <option key={r.id} value={r.label}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setPayDialog(null)} className="flex-1">Cancelar</Button>
+              <Button onClick={confirmPay} loading={setMemberPaid.isPending} className="flex-1">
+                Confirmar pago
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Modal: selección de motivo de pase libre */}
@@ -1269,6 +1383,7 @@ interface AdminMember {
   joined_at: string
   payment_method: 'mercadopago' | 'online' | 'manual' | 'freepass' | null
   freepass_reason: string | null
+  payment_note: string | null
 }
 
 interface AdminUserMembership {
@@ -1295,11 +1410,15 @@ function useAdminTournamentMembers(tournamentId: string | null) {
 function useAdminSetMemberPaid() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ userId, tournamentId, paid }: { userId: string; tournamentId: string; paid: boolean }) => {
+    mutationFn: async ({ userId, tournamentId, paid, amount, note }: {
+      userId: string; tournamentId: string; paid: boolean; amount?: number | null; note?: string | null
+    }) => {
       const { error } = await supabase.rpc('admin_set_member_paid', {
         p_user_id: userId,
         p_tournament_id: tournamentId,
         p_paid: paid,
+        p_amount: amount ?? null,
+        p_note: note ?? null,
       })
       if (error) throw error
     },
@@ -1307,6 +1426,7 @@ function useAdminSetMemberPaid() {
       qc.invalidateQueries({ queryKey: ['admin-tournament-members', tournamentId] })
       qc.invalidateQueries({ queryKey: ['admin-user-memberships', userId] })
       qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] })
+      qc.invalidateQueries({ queryKey: ['admin-global-tournament-stats'] })
     },
   })
 }
@@ -1377,6 +1497,8 @@ interface GlobalTournamentStats {
   total_members: number
   paid_members: number
   total_collected: number
+  mp_collected: number
+  manual_collected: number
 }
 
 function useGlobalTournamentStats() {
@@ -1501,39 +1623,67 @@ function TorneosTab() {
               created_at: '',
             })}
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 bg-union-blue/30 rounded-xl flex items-center justify-center shrink-0">
-                <Trophy size={16} className="text-union-blue" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-union-blue/30 rounded-xl flex items-center justify-center shrink-0">
+                <Trophy size={18} className="text-union-blue" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-white">{g.tournament_name}</span>
+                  <span className="text-base font-semibold text-white">{g.tournament_name}</span>
                   <span className="text-xs text-yellow-400 font-medium">${Number(g.entry_fee).toLocaleString('es-AR')} ARS</span>
                 </div>
-                <p className="text-xs text-white/40 mt-0.5">Tocá para ver quién pagó</p>
+                <p className="text-xs text-white/40 mt-0.5">Hacé clic para ver la lista de participantes</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-union-navy rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-white">{g.total_members}</p>
-                <p className="text-xs text-white/40">participantes</p>
+
+            {/* Stats principales */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-union-navy rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-white">{g.total_members}</p>
+                <p className="text-xs text-white/40 mt-0.5">participantes</p>
               </div>
-              <div className="bg-union-navy rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-green-400">{g.paid_members}</p>
-                <p className="text-xs text-white/40">pagaron</p>
+              <div className="bg-union-navy rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-green-400">{g.paid_members}</p>
+                <p className="text-xs text-white/40 mt-0.5">pagaron</p>
               </div>
-              <div className="bg-union-navy rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-yellow-400">${Number(g.total_collected).toLocaleString('es-AR')}</p>
-                <p className="text-xs text-white/40">recaudado</p>
+              <div className="bg-union-navy rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-red-400">{g.total_members - g.paid_members}</p>
+                <p className="text-xs text-white/40 mt-0.5">sin pago</p>
               </div>
             </div>
+
+            {/* Desglose recaudado */}
+            <div className="bg-union-navy rounded-xl p-4 space-y-3">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Recaudado</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white/70">Total general</span>
+                <span className="text-base font-bold text-yellow-400">${Number(g.total_collected).toLocaleString('es-AR')}</span>
+              </div>
+              <div className="border-t border-union-blue/10 pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-blue-300/80 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
+                    MercadoPago
+                  </span>
+                  <span className="text-sm font-semibold text-blue-300">${Number(g.mp_collected).toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-green-300/80 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
+                    Transferencias manuales
+                  </span>
+                  <span className="text-sm font-semibold text-green-300">${Number(g.manual_collected).toLocaleString('es-AR')}</span>
+                </div>
+              </div>
+            </div>
+
             {g.total_members > 0 && (
-              <div className="mt-2.5">
-                <div className="flex justify-between text-xs text-white/40 mb-1">
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-white/40 mb-1.5">
                   <span>Pagos recibidos</span>
                   <span>{g.paid_members}/{g.total_members}</span>
                 </div>
-                <div className="h-1.5 bg-union-navy rounded-full overflow-hidden">
+                <div className="h-2 bg-union-navy rounded-full overflow-hidden">
                   <div
                     className="h-full bg-green-500 rounded-full transition-all"
                     style={{ width: `${(g.paid_members / g.total_members) * 100}%` }}

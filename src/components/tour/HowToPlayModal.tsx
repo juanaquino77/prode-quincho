@@ -36,22 +36,25 @@ const SECTIONS = [
     ],
   },
   {
-    emoji: '⏰',
-    title: 'Cierre de pronósticos',
+    emoji: '📅',
+    title: 'Cómo se cargan los pronósticos — MUY IMPORTANTE',
+    highlight: true,
     items: [
-      'Cada pronóstico cierra de forma individual: 15 minutos antes de que arranque ese partido específico.',
-      'Una vez cerrado ese partido, no podés modificar ese pronóstico.',
-      'Mientras tanto, podés seguir cargando o editando los pronósticos de los demás partidos que estén a más de 15 minutos de comenzar.',
+      '📌 FASE DE GRUPOS: cuando comience el Mundial podrás cargar tus pronósticos para todos los partidos de la fase de grupos. Podés hacerlo día a día o todos juntos, a tu ritmo.',
+      '📌 FASE ELIMINATORIA: una vez definidos los 32 clasificados (al finalizar la fase de grupos), se habilitará la carga de pronósticos para todos los partidos de eliminatorias: 16avos, cuartos, semis y final.',
+      '⚠️ Los pronósticos de cada partido cierran 15 minutos antes de que ese partido empiece. Pasado ese tiempo, ese pronóstico ya no se puede modificar.',
+      '✅ Mientras un partido no haya empezado, podés editar tu pronóstico todas las veces que quieras.',
     ],
   },
   {
     emoji: '💳',
-    title: 'Torneos y pago',
+    title: 'Inscripción y pago',
     items: [
-      'Torneo Global: competís contra todos. La entrada son $20.000 ARS, se paga una sola vez vía Mercado Pago.',
-      'Torneos de Amigos: privados, con código de invitación. Podés crear uno o unirte al de un amigo.',
-      'Para unirte a torneos de amigos necesitás estar inscripto en el torneo global primero.',
-      'Los torneos de amigos pueden ser gratuitos o tener su propia entrada. El club recibe un 10% de los torneos pagos.',
+      '⚠️ Para participar de los premios, debés abonar la entrada al Torneo General ANTES del comienzo del Mundial.',
+      'Quienes no abonen antes del inicio no podrán participar de la premiación, aunque sí podrán seguir cargando pronósticos.',
+      'Torneo Global: la entrada son $20.000 ARS. Se paga por Mercado Pago o por transferencia al club.',
+      'Torneos de Amigos: privados, con código de invitación. Gratuitos o con entrada propia.',
+      'Para unirte a un torneo de amigos necesitás estar inscripto en el Torneo General primero.',
     ],
   },
   {
@@ -105,17 +108,16 @@ export function HowToPlayModal() {
         {/* Scrollable content */}
         <div className="overflow-y-auto px-5 py-4 space-y-6">
           {SECTIONS.map((sec) => (
-            <div key={sec.title} className="space-y-2">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <div key={sec.title} className={`space-y-2 ${'highlight' in sec && sec.highlight ? 'bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 -mx-1' : ''}`}>
+              <h3 className={`text-sm font-bold flex items-center gap-2 ${'highlight' in sec && sec.highlight ? 'text-amber-300' : 'text-white'}`}>
                 <span>{sec.emoji}</span>
                 {sec.title}
               </h3>
 
               {sec.items && (
-                <ul className="space-y-1.5 pl-1">
+                <ul className="space-y-2 pl-1">
                   {sec.items.map((item, i) => (
-                    <li key={i} className="text-xs text-white/60 leading-relaxed flex gap-2">
-                      <span className="text-union-blue/50 shrink-0 mt-0.5">•</span>
+                    <li key={i} className="text-xs text-white/65 leading-relaxed">
                       {item}
                     </li>
                   ))}

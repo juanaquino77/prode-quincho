@@ -129,6 +129,31 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
         <p>Partido: 2-1. Pronóstico: 1-0 → <span className="text-white/70">{r.pts_outcome} pt{r.pts_outcome !== 1 ? 's' : ''} (ganó el local)</span></p>
         <p>Partido: 0-0 + penales local. Pronóstico: 0-0 + local → <span className="text-white/70">{r.pts_exact + r.pts_penalty_correct} pts (exacto + penales)</span></p>
       </div>
+
+      {/* Cómo se cargan los pronósticos */}
+      <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/20 p-4 space-y-3">
+        <p className="text-xs font-semibold text-amber-400/70 uppercase tracking-wider">📅 Cómo se cargan los pronósticos</p>
+        <div className="space-y-2 text-xs text-white/60 leading-relaxed">
+          <div className="flex gap-2">
+            <span className="text-amber-400 shrink-0">1.</span>
+            <p><span className="text-white font-medium">Fase de grupos:</span> desde el inicio del Mundial podés cargar tus pronósticos para todos los partidos de grupos, día a día o todos juntos.</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-amber-400 shrink-0">2.</span>
+            <p><span className="text-white font-medium">Fase eliminatoria:</span> una vez definidos los 32 clasificados, se habilitan los pronósticos de eliminatorias (16avos, cuartos, semis y final).</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-amber-400 shrink-0">⏰</span>
+            <p>Cada pronóstico cierra <span className="text-white font-medium">15 minutos antes</span> del inicio de ese partido. Hasta ese momento podés editar libremente.</p>
+          </div>
+        </div>
+        <div className="border-t border-amber-500/15 pt-3">
+          <p className="text-xs text-amber-300/80 font-medium">⚠️ Importante sobre la inscripción</p>
+          <p className="text-xs text-white/50 mt-1 leading-relaxed">
+            Para participar de los premios debés abonar la entrada <span className="text-white font-medium">antes del inicio del Mundial</span>. Quienes paguen después del comienzo no acceden a la premiación.
+          </p>
+        </div>
+      </div>
     </Modal>
   )
 }
