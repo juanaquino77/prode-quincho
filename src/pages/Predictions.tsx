@@ -354,10 +354,9 @@ export default function Predictions() {
     return groupMatches.length > 0 && groupMatches.every((m) => m.status === 'finished')
   }, [matches])
 
-  // Mientras los grupos no estén completos, solo mostramos la tab de grupos
-  const visibleStages = isGroupStageDone ? availableStages : availableStages.filter(s => s === 'group')
-  const showStageTabs = visibleStages.length > 1 && viewMode === 'groups'
+  const showStageTabs = availableStages.length > 1 && viewMode === 'groups'
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
+  const showKnockoutBanner = !isGroupStageDone && resolvedStage !== 'group' && viewMode === 'groups'
 
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
   const calendarMatchesByDay = useMemo(() => {
@@ -532,7 +531,7 @@ export default function Predictions() {
       {/* Stage tabs */}
       {showStageTabs && (
         <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
-          {visibleStages.map((stage) => (
+          {availableStages.map((stage) => (
             <button
               key={stage}
               onClick={() => { setActiveStage(stage); if (stage === 'group') setActiveGroup('A') }}
@@ -544,6 +543,19 @@ export default function Predictions() {
               {getStageName(stage)}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Banner: etapa eliminatoria no disponible aún */}
+      {showKnockoutBanner && (
+        <div className="mb-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+          <span className="text-amber-400 text-base shrink-0 mt-0.5">⏳</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-300">Carga de pronósticos no disponible aún</p>
+            <p className="text-xs text-amber-400/70 mt-0.5 leading-relaxed">
+              Podrás cargar tus pronósticos para esta etapa una vez que estén definidos los rivales de la Ronda de 32, al finalizar la fase de grupos.
+            </p>
+          </div>
         </div>
       )}
 
