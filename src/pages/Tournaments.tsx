@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Trophy, Users, Plus, LogIn, Lock, Unlock, Star, Trash2, Pencil,
-  ChevronRight, Copy, Check, ClipboardList, LayoutList, ScrollText, QrCode,
+  ChevronRight, Copy, Check, ClipboardList, LayoutList, ScrollText, QrCode, CopyCheck,
 } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
 import { Layout } from '../components/layout/Layout'
@@ -13,6 +13,7 @@ import { Modal } from '../components/ui/Modal'
 import { CreateTournamentModal } from '../components/tournaments/CreateTournamentModal'
 import { JoinTournamentModal } from '../components/tournaments/JoinTournamentModal'
 import { TournamentRulesModal } from '../components/tournaments/TournamentRulesModal'
+import { CopyPredictionsSection } from '../components/tournaments/CopyPredictionsSection'
 import { useUserTournaments, useGlobalTournament, useDeleteTournament, useRenameTournament } from '../hooks/useTournaments'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
@@ -182,6 +183,7 @@ function TournamentCard({ tournament, isGlobal, userId }: {
   const [copiedLink, setCopiedLink] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const isCreator = !isGlobal
 
   const needsPayment = tournament.entry_fee > 0 && tournament.user_paid !== true
@@ -358,13 +360,25 @@ function TournamentCard({ tournament, isGlobal, userId }: {
 
           {/* CTA */}
           <div className="flex items-center justify-between pt-2 border-t border-union-blue/10">
-              <button
-                onClick={(e) => { e.stopPropagation(); setRulesOpen(true) }}
-                className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
-              >
-                <ScrollText size={11} />
-                Ver reglas
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRulesOpen(true) }}
+                  className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
+                >
+                  <ScrollText size={11} />
+                  Ver reglas
+                </button>
+                {!isGlobal && userId && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCloneOpen(true) }}
+                    className="flex items-center gap-1 text-xs text-white/30 hover:text-union-blue transition-colors"
+                    title="Clonar pronósticos desde otro torneo"
+                  >
+                    <CopyCheck size={11} />
+                    Clonar
+                  </button>
+                )}
+              </div>
               <div className={cn(
                 'flex items-center gap-1 text-xs font-semibold transition-colors',
                 isComplete
@@ -452,6 +466,16 @@ function TournamentCard({ tournament, isGlobal, userId }: {
         onClose={() => setRulesOpen(false)}
         tournament={tournament}
       />
+
+      <Modal open={cloneOpen} onClose={() => setCloneOpen(false)} title="Clonar pronósticos">
+        <p className="text-xs text-white/50 mb-4">
+          Copiá tus pronósticos de otro torneo hacia <span className="text-white font-semibold">{tournament.name}</span>.
+          Podés editarlos después, siempre que el partido no haya cerrado.
+        </p>
+        {userId && (
+          <CopyPredictionsSection userId={userId} targetTournamentId={tournament.id} />
+        )}
+      </Modal>
     </>
   )
 }
