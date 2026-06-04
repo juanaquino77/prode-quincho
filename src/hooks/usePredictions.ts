@@ -18,7 +18,8 @@ export function usePredictionCompletion(
     const allMatches = matches ?? []
     let countableMatches = allMatches
 
-    if (competition === 'apertura_2026') {
+    // Para cualquier torneo con múltiples etapas: solo contar las etapas desbloqueadas
+    if (competition) {
       const stageSet = new Set(allMatches.map((m) => m.stage))
       const orderedStages = STAGE_ORDER.filter((s: MatchStage) => stageSet.has(s))
       const firstLockedIdx = orderedStages.findIndex((_stage: MatchStage, i: number) => {

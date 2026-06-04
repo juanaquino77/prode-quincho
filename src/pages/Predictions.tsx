@@ -348,7 +348,15 @@ export default function Predictions() {
     return m.stage === resolvedStage
   })
 
-  const showStageTabs = availableStages.length > 1 && viewMode === 'groups'
+  // Grupos completos = todos los partidos de grupo tienen status 'finished'
+  const isGroupStageDone = useMemo(() => {
+    const groupMatches = (matches ?? []).filter((m) => m.stage === 'group')
+    return groupMatches.length > 0 && groupMatches.every((m) => m.status === 'finished')
+  }, [matches])
+
+  // Mientras los grupos no estén completos, solo mostramos la tab de grupos
+  const visibleStages = isGroupStageDone ? availableStages : availableStages.filter(s => s === 'group')
+  const showStageTabs = visibleStages.length > 1 && viewMode === 'groups'
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
 
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
@@ -524,7 +532,7 @@ export default function Predictions() {
       {/* Stage tabs */}
       {showStageTabs && (
         <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
-          {availableStages.map((stage) => (
+          {visibleStages.map((stage) => (
             <button
               key={stage}
               onClick={() => { setActiveStage(stage); if (stage === 'group') setActiveGroup('A') }}
@@ -592,8 +600,8 @@ export default function Predictions() {
                     prediction={predMap.get(match.id)}
                     tournamentId={selectedTournament!.id}
                     userId={user!.id}
-                    phaseLocked={match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.')}
-                    phaseUnlockAt={phaseUnlockTimes.get(match.id)}
+                    phaseLocked={match.stage !== 'group' && (!isGroupStageDone || match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.'))}
+                    phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
                     lockAt={roundLockTimes.get(match.id)}
                     highlighted={match.id === highlightMatchId}
                     requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
@@ -669,8 +677,8 @@ export default function Predictions() {
               prediction={predMap.get(match.id)}
               tournamentId={selectedTournament!.id}
               userId={user!.id}
-              phaseLocked={match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.')}
-              phaseUnlockAt={phaseUnlockTimes.get(match.id)}
+              phaseLocked={!isGroupStageDone || match.home_team.startsWith('Gan.') || match.away_team.startsWith('Gan.')}
+              phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
               lockAt={roundLockTimes.get(match.id)}
               highlighted={match.id === highlightMatchId}
               requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}

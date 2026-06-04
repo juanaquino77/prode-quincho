@@ -257,7 +257,11 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
             <div className="flex flex-col items-center gap-1 text-center px-2">
               {phaseUnlockAt
                 ? <Countdown unlockAt={phaseUnlockAt} />
-                : <span className="text-[10px] text-white/30">Pendiente de clasificados</span>}
+                : (
+                  <span className="text-[10px] text-white/30 leading-snug">
+                    Se habilita cuando estén<br/>los 32 clasificados
+                  </span>
+                )}
             </div>
           ) : locked && !prediction ? (
             <div className="flex items-center gap-1 text-white/30 text-xs">

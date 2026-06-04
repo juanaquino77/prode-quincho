@@ -69,3 +69,8 @@ export function useIsAdmin() {
   const profile = useAuthStore((s) => s.profile)
   return profile?.is_admin ?? false
 }
+
+export function useIsOrganizer() {
+  const profile = useAuthStore((s) => s.profile)
+  return profile?.is_organizer ?? false
+}

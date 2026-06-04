@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useAuthInit, useIsAdmin } from './hooks/useAuth'
+import { useAuthInit, useIsAdmin, useIsOrganizer } from './hooks/useAuth'
 import { useMatchesRealtime } from './hooks/useMatches'
 import { useAuthStore } from './store/authStore'
 import Login from './pages/Login'
@@ -26,6 +26,7 @@ function AppRoutes() {
   useMatchesRealtime()
   const { user, loading } = useAuthStore()
   const isAdmin = useIsAdmin()
+  const isOrganizer = useIsOrganizer()
 
   if (loading) {
     return (
@@ -60,7 +61,7 @@ function AppRoutes() {
       <Route path="/payment/success" element={<PaymentResult type="success" />} />
       <Route path="/payment/failure" element={<PaymentResult type="failure" />} />
       <Route path="/payment/pending" element={<PaymentResult type="pending" />} />
-      {isAdmin && <Route path="/admin" element={<Admin />} />}
+      {(isAdmin || isOrganizer) && <Route path="/admin" element={<Admin />} />}
       <Route path="/perfil" element={<Profile />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

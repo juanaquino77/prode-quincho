@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, createContext, useContext } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -16,6 +16,11 @@ import { supabase } from '../lib/supabase'
 import { formatShortDate, getStageName, resolveMatches } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { Match, MatchStage, TournamentTypeAdmin } from '../types'
+import { useIsAdmin, useIsOrganizer } from '../hooks/useAuth'
+
+// Contexto de solo lectura para el panel de admin
+const ReadOnlyCtx = createContext(false)
+const useReadOnly = () => useContext(ReadOnlyCtx)
 
 // ─── Types ────────────────────────────────────────────────────
 interface AdminUser {
@@ -28,6 +33,7 @@ interface AdminUser {
   free_pass: boolean
   freepass_reason: string | null
   paid_global: boolean
+  is_organizer: boolean
   created_at: string
   phone: string | null
 }
@@ -57,6 +63,17 @@ function useAdminDeleteUser() {
   return useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase.rpc('admin_delete_user', { p_user_id: userId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+}
+
+function useAdminSetOrganizer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, isOrganizer }: { userId: string; isOrganizer: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_organizer', { p_user_id: userId, p_is_organizer: isOrganizer })
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
@@ -143,13 +160,27 @@ type Tab = 'results' | 'matches' | 'users' | 'types' | 'torneos'
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<Tab>('results')
+  const isAdmin = useIsAdmin()
+  const isOrganizer = useIsOrganizer()
+  const isReadOnly = !isAdmin && isOrganizer
 
   return (
+    <ReadOnlyCtx.Provider value={isReadOnly}>
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
         <p className="text-white/50 text-sm mt-0.5">Gestión de partidos, usuarios y tipos de torneo</p>
       </div>
+
+      {isReadOnly && (
+        <div className="mb-5 flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+          <Eye size={16} className="text-amber-400 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-300">Vista de organizador — solo lectura</p>
+            <p className="text-xs text-amber-400/60 mt-0.5">Podés ver toda la información pero no podés tomar acciones.</p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-union-blue/15 pb-0 overflow-x-auto">
@@ -182,6 +213,7 @@ export default function Admin() {
       {activeTab === 'types'   && <TournamentTypesTab />}
       {activeTab === 'torneos' && <TorneosTab />}
     </Layout>
+    </ReadOnlyCtx.Provider>
   )
 }
 
@@ -578,6 +610,9 @@ function UsersTab() {
                   {u.user_is_admin && (
                     <Badge variant="blue"><ShieldAlert size={10} className="mr-1" />Admin</Badge>
                   )}
+                  {u.is_organizer && !u.user_is_admin && (
+                    <Badge variant="blue"><Eye size={10} className="mr-1" />Organizador</Badge>
+                  )}
                   {u.free_pass && (
                     <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>
                   )}
@@ -620,6 +655,8 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
   const setMemberPaid = useAdminSetMemberPaid()
   const toggleFreePass = useToggleFreePass()
   const deleteUser = useAdminDeleteUser()
+  const setOrganizer = useAdminSetOrganizer()
+  const readOnly = useReadOnly()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [selectedReason, setSelectedReason] = useState<string>('')
@@ -692,6 +729,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-white">{user.username ?? '—'}</span>
                 {user.user_is_admin && <Badge variant="blue"><ShieldAlert size={10} className="mr-1" />Admin</Badge>}
+                {user.is_organizer && !user.user_is_admin && <Badge variant="blue"><Eye size={10} className="mr-1" />Organizador</Badge>}
                 {user.free_pass && <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>}
               </div>
               <p className="text-xs text-white/40 truncate">{user.email}</p>
@@ -736,6 +774,28 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           )}
 
+          {/* Rol organizador (solo admin puede asignarlo) */}
+          {!user.user_is_admin && !readOnly && (
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <p className="text-sm text-white font-medium">Rol Organizador</p>
+                <p className="text-xs text-white/40">Acceso de solo lectura al panel de admin</p>
+              </div>
+              <button
+                onClick={() => setOrganizer.mutate({ userId: user.user_id, isOrganizer: !user.is_organizer })}
+                disabled={setOrganizer.isPending}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  user.is_organizer
+                    ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                    : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                )}
+              >
+                {user.is_organizer ? '✓ Organizador' : 'Sin rol'}
+              </button>
+            </div>
+          )}
+
           {/* Pase libre global */}
           {!user.user_is_admin && (
             <div className="border border-union-blue/20 rounded-xl p-3">
@@ -750,9 +810,10 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                 </div>
                 <button
                   onClick={handleToggleFreePass}
-                  disabled={toggleFreePass.isPending}
+                  disabled={toggleFreePass.isPending || readOnly}
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                    readOnly ? 'opacity-40 cursor-not-allowed' : '',
                     user.free_pass
                       ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
@@ -783,16 +844,14 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                   </div>
                   <button
                     onClick={() => {
-                      if (m.entry_fee === 0) return
+                      if (m.entry_fee === 0 || readOnly) return
                       if (m.paid) {
-                        // Desmarcar directamente
                         setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: false })
                       } else {
-                        // Marcar → pedir método y monto
                         openPayDialog(m)
                       }
                     }}
-                    disabled={setMemberPaid.isPending || m.entry_fee === 0}
+                    disabled={setMemberPaid.isPending || m.entry_fee === 0 || readOnly}
                     className={cn(
                       'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                       m.entry_fee === 0
@@ -818,8 +877,8 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           </div>
 
-          {/* Zona peligrosa */}
-          {!user.user_is_admin && (
+          {/* Zona peligrosa — solo admin */}
+          {!user.user_is_admin && !readOnly && (
             <div className="border border-red-500/20 rounded-xl p-3">
               <p className="text-xs font-semibold text-red-400/60 uppercase tracking-wider mb-2">Zona peligrosa</p>
               {confirmDelete ? (
