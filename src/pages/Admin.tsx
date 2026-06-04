@@ -27,6 +27,7 @@ interface AdminUser {
   user_is_admin: boolean
   free_pass: boolean
   created_at: string
+  phone: string | null
 }
 
 // ─── Hooks ────────────────────────────────────────────────────
@@ -532,6 +533,11 @@ function UsersTab() {
                 <p className="text-xs text-white/40 truncate">{u.email}</p>
               </div>
 
+              {/* Phone indicator */}
+              <span className={cn('text-xs shrink-0 hidden sm:block', u.phone ? 'text-green-400' : 'text-red-400/50')}>
+                {u.phone ? '📱' : 'Sin cel'}
+              </span>
+
               {/* Date */}
               <span className="text-xs text-white/30 hidden sm:block shrink-0">
                 {new Date(u.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -583,6 +589,11 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                 {user.free_pass && <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>}
               </div>
               <p className="text-xs text-white/40 truncate">{user.email}</p>
+              <p className="text-xs mt-0.5">
+                {user.phone
+                  ? <span className="text-green-400">📱 {user.phone}</span>
+                  : <span className="text-red-400/70">Sin celular registrado</span>}
+              </p>
             </div>
           </div>
 
