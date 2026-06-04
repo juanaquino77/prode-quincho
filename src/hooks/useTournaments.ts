@@ -8,14 +8,11 @@ export function useTournaments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*, tournament_members(count)')
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data.map((t: Tournament & { tournament_members: { count: number }[] }) => ({
-        ...t,
-        member_count: t.tournament_members?.[0]?.count ?? 0,
-      })) as Tournament[]
+      return data as Tournament[]
     },
   })
 }
@@ -39,13 +36,12 @@ export function useUserTournaments(userId: string | undefined) {
       // Paso 2: query tournaments (sin club_fee_percentage)
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*, tournament_members(count)')
+        .select('*')
         .in('id', ids)
       if (error) throw error
 
-      return data.map((t: Tournament & { tournament_members: { count: number }[] }) => ({
+      return data.map((t: Tournament) => ({
         ...t,
-        member_count: t.tournament_members?.[0]?.count ?? 0,
         user_paid: paidMap[t.id] as boolean,
       })) as Tournament[]
     },
