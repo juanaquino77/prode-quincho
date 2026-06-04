@@ -26,8 +26,16 @@ interface AdminUser {
   avatar_url: string | null
   user_is_admin: boolean
   free_pass: boolean
+  freepass_reason: string | null
+  paid_global: boolean
   created_at: string
   phone: string | null
+}
+
+interface FreepassReasonOption {
+  id: string
+  label: string
+  created_at: string
 }
 
 // ─── Hooks ────────────────────────────────────────────────────
@@ -37,7 +45,6 @@ function useAdminUsers() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('admin_list_users')
       if (error) throw error
-      // RETURNS json → data is already the parsed array
       const users = Array.isArray(data) ? data : (data ?? [])
       return users as AdminUser[]
     },
@@ -59,11 +66,48 @@ function useAdminDeleteUser() {
 function useToggleFreePass() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ userId, freePass }: { userId: string; freePass: boolean }) => {
-      const { error } = await supabase.rpc('admin_set_free_pass', { p_user_id: userId, p_free_pass: freePass })
+    mutationFn: async ({ userId, freePass, reason }: { userId: string; freePass: boolean; reason?: string | null }) => {
+      const { error } = await supabase.rpc('admin_set_free_pass', {
+        p_user_id: userId,
+        p_free_pass: freePass,
+        p_reason: reason ?? null,
+      })
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+}
+
+function useFreepassReasons() {
+  return useQuery({
+    queryKey: ['admin-freepass-reasons'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_freepass_reasons')
+      if (error) throw error
+      return (data ?? []) as FreepassReasonOption[]
+    },
+  })
+}
+
+function useAddFreepassReason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (label: string) => {
+      const { error } = await supabase.rpc('admin_upsert_freepass_reason', { p_label: label })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-freepass-reasons'] }),
+  })
+}
+
+function useDeleteFreepassReason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('admin_delete_freepass_reason', { p_id: id })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-freepass-reasons'] }),
   })
 }
 
@@ -529,6 +573,12 @@ function UsersTab() {
                   {u.free_pass && (
                     <Badge variant="green"><Ticket size={10} className="mr-1" />Pase libre</Badge>
                   )}
+                  {!u.free_pass && u.paid_global && (
+                    <Badge variant="green">✓ Pagó</Badge>
+                  )}
+                  {!u.free_pass && !u.paid_global && (
+                    <Badge variant="gray">Sin pago</Badge>
+                  )}
                 </div>
                 <p className="text-xs text-white/40 truncate">{u.email}</p>
               </div>
@@ -558,14 +608,36 @@ function UsersTab() {
 function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
   const { data: memberships, isLoading: loadingMemberships } = useAdminUserMemberships(user?.user_id ?? null)
   const { data: predStats } = useAdminUserPredictionStats(user?.user_id ?? null)
+  const { data: reasonOptions = [] } = useFreepassReasons()
   const setMemberPaid = useAdminSetMemberPaid()
   const toggleFreePass = useToggleFreePass()
   const deleteUser = useAdminDeleteUser()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showReasonModal, setShowReasonModal] = useState(false)
+  const [selectedReason, setSelectedReason] = useState<string>('')
 
   function handleClose() {
     setConfirmDelete(false)
+    setShowReasonModal(false)
     onClose()
+  }
+
+  function handleToggleFreePass() {
+    if (!user) return
+    if (!user.free_pass) {
+      // Activar → pedir motivo
+      setSelectedReason(user.freepass_reason ?? '')
+      setShowReasonModal(true)
+    } else {
+      // Desactivar → directo
+      toggleFreePass.mutate({ userId: user.user_id, freePass: false })
+    }
+  }
+
+  async function confirmFreepass() {
+    if (!user) return
+    await toggleFreePass.mutateAsync({ userId: user.user_id, freePass: true, reason: selectedReason || null })
+    setShowReasonModal(false)
   }
 
   return (
@@ -633,22 +705,29 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
 
           {/* Pase libre global */}
           {!user.user_is_admin && (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white font-medium">Pase libre global</p>
-                <p className="text-xs text-white/40">Exime del pago en todos los torneos</p>
+            <div className="border border-union-blue/20 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white font-medium">Pase libre global</p>
+                  {user.free_pass && user.freepass_reason ? (
+                    <p className="text-xs text-yellow-400 mt-0.5">Motivo: {user.freepass_reason}</p>
+                  ) : (
+                    <p className="text-xs text-white/40">Exime del pago en todos los torneos</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleToggleFreePass}
+                  disabled={toggleFreePass.isPending}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                    user.free_pass
+                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                      : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                  )}
+                >
+                  {user.free_pass ? '✓ Activo' : 'Inactivo'}
+                </button>
               </div>
-              <button
-                onClick={() => toggleFreePass.mutate({ userId: user.user_id, freePass: !user.free_pass })}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  user.free_pass
-                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                    : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
-                )}
-              >
-                {user.free_pass ? '✓ Activo' : 'Inactivo'}
-              </button>
             </div>
           )}
 
@@ -727,6 +806,37 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           )}
         </div>
+      )}
+
+      {/* Modal: selección de motivo de pase libre */}
+      {showReasonModal && user && (
+        <Modal open onClose={() => setShowReasonModal(false)} title="Motivo del pase libre">
+          <div className="space-y-3">
+            <p className="text-xs text-white/50">
+              Seleccioná un motivo para darle pase libre a <span className="text-white font-semibold">{user.username}</span>.
+            </p>
+            <select
+              value={selectedReason}
+              onChange={(e) => setSelectedReason(e.target.value)}
+              className="w-full bg-union-navy border border-union-blue/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-union-blue"
+            >
+              <option value="">— Sin motivo especificado —</option>
+              {reasonOptions.map((r) => (
+                <option key={r.id} value={r.label}>{r.label}</option>
+              ))}
+            </select>
+            <div className="flex gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setShowReasonModal(false)} className="flex-1">Cancelar</Button>
+              <Button
+                onClick={confirmFreepass}
+                loading={toggleFreePass.isPending}
+                className="flex-1"
+              >
+                Confirmar pase libre
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </Modal>
   )
@@ -890,6 +1000,61 @@ function TournamentTypesTab() {
           onClose={() => { setCreateOpen(false); setEditTarget(null) }}
         />
       )}
+
+      <FreepassReasonsSection />
+    </div>
+  )
+}
+
+function FreepassReasonsSection() {
+  const { data: reasons = [], isLoading } = useFreepassReasons()
+  const addReason = useAddFreepassReason()
+  const deleteReason = useDeleteFreepassReason()
+  const [newLabel, setNewLabel] = useState('')
+
+  async function handleAdd() {
+    const label = newLabel.trim()
+    if (!label) return
+    await addReason.mutateAsync(label)
+    setNewLabel('')
+  }
+
+  return (
+    <div className="mt-8">
+      <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Motivos de pase libre</p>
+      <Card className="space-y-3">
+        {isLoading ? (
+          <p className="text-white/30 text-xs">Cargando...</p>
+        ) : reasons.length === 0 ? (
+          <p className="text-white/30 text-xs">No hay motivos configurados aún.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {reasons.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-2 bg-union-navy rounded-lg px-3 py-2">
+                <span className="text-sm text-white">{r.label}</span>
+                <button
+                  onClick={() => deleteReason.mutate(r.id)}
+                  className="p-1 text-white/30 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Nuevo motivo..."
+            className="flex-1 bg-union-navy border border-union-blue/30 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-union-blue"
+          />
+          <Button onClick={handleAdd} loading={addReason.isPending} className="shrink-0">
+            <Plus size={14} />
+          </Button>
+        </div>
+      </Card>
     </div>
   )
 }
@@ -1270,6 +1435,7 @@ function TorneosTab() {
   const updateName = useAdminUpdateTournamentName()
   const deleteTournament = useAdminDeleteTournament()
   const [membersOf, setMembersOf] = useState<AdminTournament | null>(null)
+  const [globalMembersOf, setGlobalMembersOf] = useState<AdminTournament | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -1299,7 +1465,20 @@ function TorneosTab() {
       {!isLoadingGlobal && (globalStats ?? []).map((g) => (
         <div key={g.tournament_id} className="mb-6">
           <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-2">Torneo General</p>
-          <Card className="bg-union-navy-light border border-union-blue/20">
+          <Card
+            className="bg-union-navy-light border border-union-blue/20 cursor-pointer hover:border-union-blue/50 transition-colors"
+            onClick={() => setGlobalMembersOf({
+              id: g.tournament_id,
+              name: g.tournament_name,
+              created_by: null,
+              creator_username: null,
+              entry_fee: Number(g.entry_fee),
+              member_count: Number(g.total_members),
+              paid_count: Number(g.paid_members),
+              total_collected: Number(g.total_collected),
+              created_at: '',
+            })}
+          >
             <div className="flex items-center gap-3 mb-3">
               <div className="w-9 h-9 bg-union-blue/30 rounded-xl flex items-center justify-center shrink-0">
                 <Trophy size={16} className="text-union-blue" />
@@ -1309,7 +1488,7 @@ function TorneosTab() {
                   <span className="text-sm font-semibold text-white">{g.tournament_name}</span>
                   <span className="text-xs text-yellow-400 font-medium">${Number(g.entry_fee).toLocaleString('es-AR')} ARS</span>
                 </div>
-                <p className="text-xs text-white/40 mt-0.5">Mundial 2026</p>
+                <p className="text-xs text-white/40 mt-0.5">Tocá para ver quién pagó</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -1435,6 +1614,10 @@ function TorneosTab() {
 
       {membersOf && (
         <TournamentMembersModal tournament={membersOf} onClose={() => setMembersOf(null)} />
+      )}
+
+      {globalMembersOf && (
+        <TournamentMembersModal tournament={globalMembersOf} onClose={() => setGlobalMembersOf(null)} />
       )}
 
       {confirmDeleteId && (
