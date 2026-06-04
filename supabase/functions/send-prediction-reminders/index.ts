@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'El Quincho <noreply@prode-quincho.vercel.app>',
+          from: 'El Quincho <noreply@prodequincho.com>',
           to: u.email,
           subject: `⚽ El Mundial arranca en ${days > 0 ? `${days} días` : `${hours} horas`} — ¡Cargá tus pronósticos!`,
           html: buildMundialCountdownHtml(days, hours),
