@@ -557,6 +557,7 @@ function UsersTab() {
 // ─── User actions modal ───────────────────────────────────────
 function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
   const { data: memberships, isLoading: loadingMemberships } = useAdminUserMemberships(user?.user_id ?? null)
+  const { data: predStats } = useAdminUserPredictionStats(user?.user_id ?? null)
   const setMemberPaid = useAdminSetMemberPaid()
   const toggleFreePass = useToggleFreePass()
   const deleteUser = useAdminDeleteUser()
@@ -596,6 +597,39 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
               </p>
             </div>
           </div>
+
+          {/* Progreso de pronósticos */}
+          {predStats && (
+            <div className="border border-union-blue/20 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Pronósticos cargados</p>
+                <span className="text-sm font-bold text-white">
+                  {predStats.predicted}
+                  <span className="text-white/30 font-normal"> / {predStats.total}</span>
+                </span>
+              </div>
+              <div className="w-full h-2 bg-union-navy rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    predStats.total === 0
+                      ? 'w-0'
+                      : predStats.predicted / predStats.total >= 0.8
+                      ? 'bg-green-500'
+                      : predStats.predicted / predStats.total >= 0.4
+                      ? 'bg-yellow-500'
+                      : 'bg-red-500'
+                  )}
+                  style={{ width: predStats.total > 0 ? `${Math.round((predStats.predicted / predStats.total) * 100)}%` : '0%' }}
+                />
+              </div>
+              <p className="text-[11px] text-white/30">
+                {predStats.total === 0
+                  ? 'Sin partidos cargados'
+                  : `${Math.round((predStats.predicted / predStats.total) * 100)}% completado`}
+              </p>
+            </div>
+          )}
 
           {/* Pase libre global */}
           {!user.user_is_admin && (
@@ -1098,6 +1132,28 @@ function useAdminUserMemberships(userId: string | null) {
       const { data, error } = await supabase.rpc('admin_user_memberships', { p_user_id: userId })
       if (error) throw error
       return (data ?? []) as AdminUserMembership[]
+    },
+  })
+}
+
+function useAdminUserPredictionStats(userId: string | null) {
+  return useQuery({
+    queryKey: ['admin-user-prediction-stats', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const [predsRes, matchesRes] = await Promise.all([
+        supabase
+          .from('predictions')
+          .select('match_id', { count: 'exact', head: true })
+          .eq('user_id', userId!),
+        supabase
+          .from('matches')
+          .select('id', { count: 'exact', head: true }),
+      ])
+      return {
+        predicted: predsRes.count ?? 0,
+        total: matchesRes.count ?? 0,
+      }
     },
   })
 }
