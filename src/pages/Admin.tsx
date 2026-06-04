@@ -141,20 +141,42 @@ function ResultsTab() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [filterStage, setFilterStage] = useState<string>('group')
   const [filterGroup, setFilterGroup] = useState<string>('A')
+  const [viewMode, setViewMode] = useState<'stage' | 'calendar'>('stage')
 
   const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
   const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
-  const KNOCKOUT = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
 
   const allSorted = (matches ?? [])
     .slice()
     .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
 
-  const relevant = allSorted.filter((m) =>
-    filterStage === 'group'
-      ? m.stage === 'group' && m.group_name === filterGroup
-      : m.stage === filterStage
-  )
+  const relevant = viewMode === 'stage'
+    ? allSorted.filter((m) =>
+        filterStage === 'group'
+          ? m.stage === 'group' && m.group_name === filterGroup
+          : m.stage === filterStage
+      )
+    : allSorted
+
+  // Agrupar por día para vista calendario
+  const matchesByDay = viewMode === 'calendar' ? (() => {
+    const days: { dateKey: string; label: string; matches: Match[] }[] = []
+    for (const m of relevant) {
+      const d = new Date(m.match_date)
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      const last = days[days.length - 1]
+      if (last?.dateKey === dateKey) {
+        last.matches.push(m)
+      } else {
+        days.push({
+          dateKey,
+          label: d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }),
+          matches: [m],
+        })
+      }
+    }
+    return days
+  })() : []
 
   // Etapas que tienen al menos 1 partido cargado
   const existingStages = new Set(allSorted.map((m) => m.stage))
@@ -203,113 +225,160 @@ function ResultsTab() {
 
   return (
     <div className="space-y-3">
-      {/* Stage tabs */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
-        {availableStages.map((s) => (
+      {/* Toggle */}
+      <div className="flex gap-1.5 p-1 bg-union-navy-light rounded-xl border border-union-blue/15 w-fit">
+        {(['stage', 'calendar'] as const).map((mode) => (
           <button
-            key={s}
-            onClick={() => { setFilterStage(s); if (s === 'group') setFilterGroup('A') }}
+            key={mode}
+            onClick={() => setViewMode(mode)}
             className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
-              filterStage === s ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'
+              'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+              viewMode === mode ? 'bg-union-blue text-white shadow-sm' : 'text-white/40 hover:text-white/70'
             )}
           >
-            {getStageName(s as MatchStage)}
+            {mode === 'stage' ? 'Por etapa' : 'Por fecha'}
           </button>
         ))}
       </div>
 
-      {/* Group tabs */}
-      {filterStage === 'group' && availableGroups.length > 0 && (
-        <div className="flex gap-1 flex-wrap">
-          {availableGroups.map((g) => (
-            <button
-              key={g}
-              onClick={() => setFilterGroup(g)}
-              className={cn(
-                'w-9 h-9 rounded-lg text-xs font-bold transition-colors',
-                filterGroup === g ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/40 hover:text-white'
-              )}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
+      {/* Stage + group tabs (solo en modo etapa) */}
+      {viewMode === 'stage' && (
+        <>
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            {availableStages.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setFilterStage(s); if (s === 'group') setFilterGroup('A') }}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
+                  filterStage === s ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/50 hover:text-white'
+                )}
+              >
+                {getStageName(s as MatchStage)}
+              </button>
+            ))}
+          </div>
+          {filterStage === 'group' && availableGroups.length > 0 && (
+            <div className="flex gap-1 flex-wrap">
+              {availableGroups.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setFilterGroup(g)}
+                  className={cn(
+                    'w-9 h-9 rounded-lg text-xs font-bold transition-colors',
+                    filterGroup === g ? 'bg-union-blue text-white' : 'bg-union-navy-light text-white/40 hover:text-white'
+                  )}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Match cards */}
-      {relevant.map((m) => {
-        const row = getRow(m)
-        const homeVal = parseInt(row.home)
-        const awayVal = parseInt(row.away)
-        const isDraw = !isNaN(homeVal) && !isNaN(awayVal) && homeVal === awayVal
-        const isKnockout = KNOCKOUT.includes(m.stage)
-        const showPen = isKnockout && isDraw
-
-        return (
-          <Card key={m.id} className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Badge variant={m.status === 'finished' ? 'gray' : m.status === 'live' ? 'green' : 'blue'}>
-                  {getStageName(m.stage)}{m.group_name ? ` ${m.group_name}` : ''}
-                </Badge>
-                <span className="text-xs text-white/40">{formatShortDate(m.match_date)}</span>
+      {/* Vista calendario */}
+      {viewMode === 'calendar' ? (
+        matchesByDay.length === 0
+          ? <Card className="text-center py-8 text-white/40 text-sm">No hay partidos cargados</Card>
+          : matchesByDay.map((day) => (
+            <div key={day.dateKey}>
+              <div className="flex items-center gap-3 mb-2 mt-4 first:mt-0">
+                <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
+                <div className="flex-1 h-px bg-union-blue/15" />
+                <span className="text-xs text-white/30">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
               </div>
-              <select
-                value={row.status}
-                onChange={(e) => setField(m, 'status', e.target.value)}
-                className="text-xs bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-union-blue"
-              >
-                <option value="upcoming">Próximo</option>
-                <option value="live">En vivo</option>
-                <option value="finished">Finalizado</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="flex-1 text-sm font-semibold text-white truncate text-right">{resolvedById.get(m.id)?.home_team ?? m.home_team}</span>
-              <input
-                type="number" min="0" max="20"
-                value={row.home}
-                onChange={(e) => setField(m, 'home', e.target.value)}
-                className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
-                placeholder="—"
-              />
-              <span className="text-white/30 text-xs font-bold">-</span>
-              <input
-                type="number" min="0" max="20"
-                value={row.away}
-                onChange={(e) => setField(m, 'away', e.target.value)}
-                className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
-                placeholder="—"
-              />
-              <span className="flex-1 text-sm font-semibold text-white truncate">{resolvedById.get(m.id)?.away_team ?? m.away_team}</span>
-              <Button size="sm" onClick={() => handleSave(m)} loading={savingId === m.id} className="shrink-0">
-                {saved[m.id] ? '✓' : <Save size={13} />}
-              </Button>
-            </div>
-
-            {showPen && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-yellow-400 font-semibold">Pen:</span>
-                <select
-                  value={row.pen}
-                  onChange={(e) => setField(m, 'pen', e.target.value)}
-                  className="flex-1 text-xs bg-union-navy-light border border-yellow-500/30 rounded-lg text-white px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                >
-                  <option value="">— Sin definir —</option>
-                  <option value="home">{resolvedById.get(m.id)?.home_team ?? m.home_team}</option>
-                  <option value="away">{resolvedById.get(m.id)?.away_team ?? m.away_team}</option>
-                </select>
+              <div className="space-y-2">
+                {day.matches.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
               </div>
-            )}
-          </Card>
-        )
-      })}
-      {relevant.length === 0 && (
-        <Card className="text-center py-8 text-white/40 text-sm">No hay partidos en esta etapa</Card>
+            </div>
+          ))
+      ) : (
+        <>
+              {relevant.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
+          {relevant.length === 0 && (
+            <Card className="text-center py-8 text-white/40 text-sm">No hay partidos en esta etapa</Card>
+          )}
+        </>
       )}
     </div>
+  )
+}
+
+function MatchResultCard({ m, resolvedById, getRow, setField, handleSave, savingId, saved }: {
+  m: Match
+  resolvedById: Map<string, Match>
+  getRow: (m: Match) => { home: string; away: string; pen: string; status: string }
+  setField: (m: Match, field: string, val: string) => void
+  handleSave: (m: Match) => Promise<void>
+  savingId: string | null
+  saved: Record<string, boolean>
+}) {
+  const KNOCKOUT = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
+  const row = getRow(m)
+  const homeVal = parseInt(row.home)
+  const awayVal = parseInt(row.away)
+  const isDraw = !isNaN(homeVal) && !isNaN(awayVal) && homeVal === awayVal
+  const showPen = KNOCKOUT.includes(m.stage) && isDraw
+
+  return (
+    <Card className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge variant={m.status === 'finished' ? 'gray' : m.status === 'live' ? 'green' : 'blue'}>
+            {getStageName(m.stage)}{m.group_name ? ` ${m.group_name}` : ''}
+          </Badge>
+          <span className="text-xs text-white/40">{formatShortDate(m.match_date)}</span>
+        </div>
+        <select
+          value={row.status}
+          onChange={(e) => setField(m, 'status', e.target.value)}
+          className="text-xs bg-union-navy-light border border-union-blue/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-union-blue"
+        >
+          <option value="upcoming">Próximo</option>
+          <option value="live">En vivo</option>
+          <option value="finished">Finalizado</option>
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="flex-1 text-sm font-semibold text-white truncate text-right">{resolvedById.get(m.id)?.home_team ?? m.home_team}</span>
+        <input
+          type="number" min="0" max="20"
+          value={row.home}
+          onChange={(e) => setField(m, 'home', e.target.value)}
+          className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
+          placeholder="—"
+        />
+        <span className="text-white/30 text-xs font-bold">-</span>
+        <input
+          type="number" min="0" max="20"
+          value={row.away}
+          onChange={(e) => setField(m, 'away', e.target.value)}
+          className="w-12 h-9 text-center bg-union-navy border border-union-blue/30 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-union-blue"
+          placeholder="—"
+        />
+        <span className="flex-1 text-sm font-semibold text-white truncate">{resolvedById.get(m.id)?.away_team ?? m.away_team}</span>
+        <Button size="sm" onClick={() => handleSave(m)} loading={savingId === m.id} className="shrink-0">
+          {saved[m.id] ? '✓' : <Save size={13} />}
+        </Button>
+      </div>
+
+      {showPen && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-yellow-400 font-semibold">Pen:</span>
+          <select
+            value={row.pen}
+            onChange={(e) => setField(m, 'pen', e.target.value)}
+            className="flex-1 text-xs bg-union-navy-light border border-yellow-500/30 rounded-lg text-white px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+          >
+            <option value="">— Sin definir —</option>
+            <option value="home">{resolvedById.get(m.id)?.home_team ?? m.home_team}</option>
+            <option value="away">{resolvedById.get(m.id)?.away_team ?? m.away_team}</option>
+          </select>
+        </div>
+      )}
+    </Card>
   )
 }
 
