@@ -73,7 +73,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src="/club-union-transp.png" alt="El Quincho" className="w-9 h-9 object-contain rounded-lg" />
+            <img src="/2.png" alt="El Quincho" className="w-9 h-9 object-contain" />
             <span className="font-bold text-white text-lg hidden sm:block whitespace-nowrap">Prode Quincho</span>
           </Link>
 
