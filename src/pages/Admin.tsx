@@ -1172,6 +1172,37 @@ function useAdminUpdateTournamentName() {
   })
 }
 
+function useAdminDeleteTournament() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (tournamentId: string) => {
+      const { error } = await supabase.rpc('admin_delete_tournament', { p_tournament_id: tournamentId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] }),
+  })
+}
+
+interface GlobalTournamentStats {
+  tournament_id: string
+  tournament_name: string
+  entry_fee: number
+  total_members: number
+  paid_members: number
+  total_collected: number
+}
+
+function useGlobalTournamentStats() {
+  return useQuery({
+    queryKey: ['admin-global-tournament-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_global_tournament_stats')
+      if (error) throw error
+      return (data ?? []) as GlobalTournamentStats[]
+    },
+  })
+}
+
 function useFriendTournaments() {
   return useQuery({
     queryKey: ['admin-friend-tournaments'],
@@ -1235,10 +1266,13 @@ function useFriendTournaments() {
 
 function TorneosTab() {
   const { data: tournaments, isLoading } = useFriendTournaments()
+  const { data: globalStats, isLoading: isLoadingGlobal } = useGlobalTournamentStats()
   const updateName = useAdminUpdateTournamentName()
+  const deleteTournament = useAdminDeleteTournament()
   const [membersOf, setMembersOf] = useState<AdminTournament | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const totalRecaudado = (tournaments ?? []).reduce((sum, t) => sum + t.total_collected, 0)
 
@@ -1254,10 +1288,65 @@ function TorneosTab() {
     setEditId(null)
   }
 
+  async function confirmDelete(id: string) {
+    await deleteTournament.mutateAsync(id)
+    setConfirmDeleteId(null)
+  }
+
   return (
     <>
+      {/* Torneo Global */}
+      {!isLoadingGlobal && (globalStats ?? []).map((g) => (
+        <div key={g.tournament_id} className="mb-6">
+          <p className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-2">Torneo General</p>
+          <Card className="bg-union-navy-light border border-union-blue/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-union-blue/30 rounded-xl flex items-center justify-center shrink-0">
+                <Trophy size={16} className="text-union-blue" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-white">{g.tournament_name}</span>
+                  <span className="text-xs text-yellow-400 font-medium">${Number(g.entry_fee).toLocaleString('es-AR')} ARS</span>
+                </div>
+                <p className="text-xs text-white/40 mt-0.5">Mundial 2026</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-union-navy rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-white">{g.total_members}</p>
+                <p className="text-xs text-white/40">participantes</p>
+              </div>
+              <div className="bg-union-navy rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-green-400">{g.paid_members}</p>
+                <p className="text-xs text-white/40">pagaron</p>
+              </div>
+              <div className="bg-union-navy rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-yellow-400">${Number(g.total_collected).toLocaleString('es-AR')}</p>
+                <p className="text-xs text-white/40">recaudado</p>
+              </div>
+            </div>
+            {g.total_members > 0 && (
+              <div className="mt-2.5">
+                <div className="flex justify-between text-xs text-white/40 mb-1">
+                  <span>Pagos recibidos</span>
+                  <span>{g.paid_members}/{g.total_members}</span>
+                </div>
+                <div className="h-1.5 bg-union-navy rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all"
+                    style={{ width: `${(g.paid_members / g.total_members) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      ))}
+
+      {/* Torneos de Amigos */}
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-        <p className="text-white/40 text-sm">{tournaments?.length ?? 0} torneos de amigos activos</p>
+        <p className="text-white/40 text-sm">{tournaments?.length ?? 0} torneos de amigos</p>
         {totalRecaudado > 0 && (
           <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-1.5">
             <DollarSign size={14} className="text-green-400" />
@@ -1331,6 +1420,13 @@ function TorneosTab() {
                 >
                   <Users size={14} />
                 </button>
+                <button
+                  onClick={() => setConfirmDeleteId(t.id)}
+                  className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
+                  title="Eliminar torneo"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </Card>
           ))}
@@ -1339,6 +1435,24 @@ function TorneosTab() {
 
       {membersOf && (
         <TournamentMembersModal tournament={membersOf} onClose={() => setMembersOf(null)} />
+      )}
+
+      {confirmDeleteId && (
+        <Modal open onClose={() => setConfirmDeleteId(null)} title="Eliminar torneo">
+          <p className="text-white/70 text-sm mb-4">
+            ¿Seguro que querés eliminar este torneo? Se borrarán todos los participantes. Esta acción no se puede deshacer.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>Cancelar</Button>
+            <Button
+              onClick={() => confirmDelete(confirmDeleteId)}
+              disabled={deleteTournament.isPending}
+              className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"
+            >
+              {deleteTournament.isPending ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
+        </Modal>
       )}
     </>
   )
