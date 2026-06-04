@@ -327,16 +327,15 @@ export default function Predictions() {
     return map
   }, [matches, availableStages, phaseLockedStages, selectedTournament?.competition])
 
-  // Mapa de matchId → momento de cierre: prediction_lock_hours antes del partido
+  // Cierre universal: 15 minutos antes del inicio de cada partido
+  const LOCK_MS = 15 * 60 * 1000
   const roundLockTimes = useMemo<Map<string, Date>>(() => {
-    const lockHours = selectedTournament?.prediction_lock_hours ?? 0
-    const lockMs = lockHours * 60 * 60 * 1000
     const map = new Map<string, Date>()
     for (const m of matches ?? []) {
-      map.set(m.id, new Date(new Date(m.match_date).getTime() - lockMs))
+      map.set(m.id, new Date(new Date(m.match_date).getTime() - LOCK_MS))
     }
     return map
-  }, [matches, selectedTournament?.prediction_lock_hours])
+  }, [matches])
 
   const resolvedStage = availableStages.includes(activeStage)
     ? activeStage

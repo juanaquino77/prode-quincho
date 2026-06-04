@@ -107,12 +107,8 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
           <RuleRow
             icon="🕐"
             label="Cierre de pronósticos"
-            value={
-              tournament.prediction_lock_hours < 1
-                ? `${Math.round(tournament.prediction_lock_hours * 60)} min antes`
-                : `${tournament.prediction_lock_hours}h antes`
-            }
-            description="Tiempo antes del partido para cerrar pronósticos"
+            value="15 min antes"
+            description="Los pronósticos se cierran 15 minutos antes del inicio de cada partido"
           />
           <RuleRow
             icon={tournament.show_rival_predictions === 'before' ? '👁️' : '🙈'}
