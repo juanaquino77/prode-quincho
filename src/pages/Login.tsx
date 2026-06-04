@@ -41,7 +41,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/4.png" alt="El Quincho" className="w-28 h-28 object-contain mx-auto mb-4 drop-shadow-[0_0_20px_rgba(0,168,222,0.35)]" />
+          <img src="/club-union-2.png" alt="El Quincho" className="w-28 h-28 object-contain mx-auto mb-4 drop-shadow-[0_0_20px_rgba(0,168,222,0.35)]" />
           <h1 className="text-3xl font-bold text-white">Prode Quincho</h1>
           <p className="text-white/50 mt-1">Mundial 2026 · El Quincho</p>
           <div className="mt-3 inline-flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full px-4 py-1.5">
