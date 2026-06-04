@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal'
 import { ClubFlag } from '../ui/ClubFlag'
 import { useMatches } from '../../hooks/useMatches'
 import { usePredictions } from '../../hooks/usePredictions'
-import { calcPoints, getStageName, isMatchLocked, resolveMatches, cn } from '../../lib/utils'
+import { calcPoints, getStageName, resolveMatches, cn } from '../../lib/utils'
 import type { LeaderboardEntry } from '../../types'
 import { STAGE_ORDER } from '../../lib/stageOrder'
 
@@ -35,7 +35,8 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
     const resolved = resolveMatches(matches ?? [])
     for (const stage of STAGE_ORDER) {
       let ms = resolved.filter((m) => m.stage === stage)
-      if (!canSeeAll) ms = ms.filter((m) => isMatchLocked(m))
+      // Mostrar pronósticos rivales cuando el partido ya empezó (live o finished)
+      if (!canSeeAll) ms = ms.filter((m) => m.status !== 'upcoming')
       if (ms.length > 0) map.set(stage, ms)
     }
     return map

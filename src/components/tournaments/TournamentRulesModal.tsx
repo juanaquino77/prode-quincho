@@ -107,17 +107,21 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
           <RuleRow
             icon="🕐"
             label="Cierre de pronósticos"
-            value={`${tournament.prediction_lock_hours}h antes`}
-            description="Horas antes del primer partido de cada jornada para cerrar pronósticos"
+            value={
+              tournament.prediction_lock_hours < 1
+                ? `${Math.round(tournament.prediction_lock_hours * 60)} min antes`
+                : `${tournament.prediction_lock_hours}h antes`
+            }
+            description="Tiempo antes del partido para cerrar pronósticos"
           />
           <RuleRow
             icon={tournament.show_rival_predictions === 'before' ? '👁️' : '🙈'}
             label="Ver pronósticos rivales"
-            value={tournament.show_rival_predictions === 'before' ? 'Antes del partido' : 'Solo después'}
+            value={tournament.show_rival_predictions === 'before' ? 'Antes del partido' : 'Al inicio del partido'}
             description={
               tournament.show_rival_predictions === 'before'
                 ? 'Podés ver los pronósticos de tus rivales antes de que empiece el partido'
-                : 'Los pronósticos de los rivales se revelan cuando el partido termina'
+                : 'Los pronósticos de los rivales se revelan cuando el partido empieza, para evitar copias'
             }
           />
         </div>
