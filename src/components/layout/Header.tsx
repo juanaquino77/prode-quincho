@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Trophy, Menu, X, LogOut, User, Shield, BarChart3, Calendar, Users, HelpCircle, Sparkles, BookOpen } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/authStore'
-import { useIsAdmin } from '../../hooks/useAuth'
+import { useIsAdmin, useIsOrganizer } from '../../hooks/useAuth'
 import { useHelpStore } from '../../store/helpStore'
 import { cn } from '../../lib/utils'
 
@@ -47,6 +47,8 @@ export function Header() {
   const helpRef = useRef<HTMLDivElement>(null)
   const { user, profile } = useAuthStore()
   const isAdmin = useIsAdmin()
+  const isOrganizer = useIsOrganizer()
+  const showAdmin = isAdmin || isOrganizer
   const navigate = useNavigate()
   const location = useLocation()
   const { openTour, openHowToPlay } = useHelpStore()
@@ -94,7 +96,7 @@ export function Header() {
                 {label}
               </Link>
             ))}
-            {isAdmin && (
+            {showAdmin && (
               <Link
                 to="/admin"
                 className={cn(
@@ -195,7 +197,7 @@ export function Header() {
               {label}
             </Link>
           ))}
-          {isAdmin && (
+          {showAdmin && (
             <Link
               to="/admin"
               className={cn(
