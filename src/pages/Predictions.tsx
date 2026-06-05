@@ -80,23 +80,6 @@ export default function Predictions() {
   // matchId → corazonada (para lookup rápido)
   const corazonadaByMatchId = new Map(corazonadas.map((c) => [c.match_id, c]))
 
-  // Primer partido de cada grupo → determina cuándo se cierra la corazonada de ese grupo
-  const groupLockTimes = useMemo<Map<string, Date>>(() => {
-    const map = new Map<string, Date>()
-    for (const m of matches ?? []) {
-      if (!m.group_name) continue
-      const existing = map.get(m.group_name)
-      const d = new Date(m.match_date)
-      if (!existing || d < existing) map.set(m.group_name, d)
-    }
-    return map
-  }, [matches])
-
-  function isGroupLocked(groupName: string | null): boolean {
-    if (!groupName) return false
-    const lockTime = groupLockTimes.get(groupName)
-    return lockTime ? Date.now() >= lockTime.getTime() : false
-  }
 
   const needsPayment = (selectedTournament?.entry_fee ?? 0) > 0 && selectedTournament?.user_paid !== true && profile?.free_pass !== true
 
@@ -219,7 +202,10 @@ export default function Predictions() {
     }
 
     // Bloquear si falta la corazonada del grupo (solo si el grupo no está cerrado)
-    if (hasCorazonada && !isGroupLocked(activeGroup) && !groupMatches.some((m) => corazonadaByMatchId.has(m.id))) {
+    if (hasCorazonada && groupMatches.some(m => {
+      const lockAt = roundLockTimes.get(m.id)
+      return lockAt && Date.now() < lockAt.getTime()
+    }) && !groupMatches.some((m) => corazonadaByMatchId.has(m.id))) {
       setCorazonadaWarning(true)
       setTimeout(() => warningRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
       return
@@ -620,7 +606,7 @@ export default function Predictions() {
                     rules={selectedTournament!.rules}
                     corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage)}
                     isCorazonada={corazonadaByMatchId.has(match.id)}
-                    corazonadaLocked={isGroupLocked(match.group_name)}
+                    corazonadaLocked={!!(roundLockTimes.get(match.id) && Date.now() >= roundLockTimes.get(match.id)!.getTime())}
                     ptsCorazonadaBonus={ptsCorazonadaBonus}
                     onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
                     onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
@@ -651,7 +637,7 @@ export default function Predictions() {
                 onBatchChange={handleBatchChange}
                 corazonadaEnabled={hasCorazonada}
                 isCorazonada={corazonadaByMatchId.has(match.id)}
-                corazonadaLocked={isGroupLocked(match.group_name)}
+                corazonadaLocked={!!(roundLockTimes.get(match.id) && Date.now() >= roundLockTimes.get(match.id)!.getTime())}
                 ptsCorazonadaBonus={ptsCorazonadaBonus}
                 onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
                 onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
@@ -697,7 +683,7 @@ export default function Predictions() {
               rules={selectedTournament!.rules}
               corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage ?? '')}
               isCorazonada={corazonadaByMatchId.has(match.id)}
-              corazonadaLocked={isGroupLocked(match.group_name)}
+              corazonadaLocked={!!(roundLockTimes.get(match.id) && Date.now() >= roundLockTimes.get(match.id)!.getTime())}
               ptsCorazonadaBonus={ptsCorazonadaBonus}
               onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name })}
               onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
