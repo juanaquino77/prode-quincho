@@ -1493,6 +1493,7 @@ interface AdminMember {
   payment_method: 'mercadopago' | 'online' | 'manual' | 'freepass' | null
   freepass_reason: string | null
   payment_note: string | null
+  payment_amount: number | null
 }
 
 interface AdminUserMembership {
@@ -1949,10 +1950,12 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
   const filtered = filter === 'all' ? members : filter === 'paid' ? members.filter(m => m.paid) : members.filter(m => !m.paid)
   const paidCount = members.filter(m => m.paid).length
 
+  const totalCollected = members.filter(m => m.paid && m.payment_amount).reduce((sum, m) => sum + (m.payment_amount ?? 0), 0)
+
   return (
-    <Modal open onClose={onClose} title={`Participantes — ${tournament.name}`}>
+    <Modal open onClose={onClose} title={`Participantes — ${tournament.name}`} className="max-w-3xl">
       {/* Resumen */}
-      <div className="flex items-center gap-4 mb-4 pb-4 border-b border-union-blue/10">
+      <div className="flex items-center gap-6 mb-4 pb-4 border-b border-union-blue/10">
         <div className="text-center">
           <p className="text-2xl font-bold text-white">{members.length}</p>
           <p className="text-xs text-white/40">total</p>
@@ -1965,6 +1968,12 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
           <p className="text-2xl font-bold text-red-400">{members.length - paidCount}</p>
           <p className="text-xs text-white/40">sin pago</p>
         </div>
+        {totalCollected > 0 && (
+          <div className="text-center">
+            <p className="text-2xl font-bold text-yellow-400">${totalCollected.toLocaleString('es-AR')}</p>
+            <p className="text-xs text-white/40">recaudado</p>
+          </div>
+        )}
         {/* Filtro */}
         <div className="ml-auto flex gap-1">
           {(['all', 'paid', 'unpaid'] as const).map(f => (
@@ -1983,45 +1992,70 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
       ) : filtered.length === 0 ? (
         <p className="text-white/40 text-sm text-center py-6">Sin participantes en este filtro</p>
       ) : (
-        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-          {filtered.map((m) => (
-            <div key={m.user_id} className="flex items-center gap-3 py-1">
-              <div className="w-9 h-9 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
-                {m.avatar_url ? (
-                  <img src={m.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
-                ) : (
-                  <span className="text-sm font-bold text-union-blue">
-                    {(m.username ?? '?')[0].toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{m.username ?? '—'}</p>
-                <p className="text-xs text-white/30">
-                  Ingresó: {new Date(m.joined_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {m.paid && <PaymentMethodBadge method={m.payment_method} reason={m.freepass_reason} />}
-                {tournament.entry_fee > 0 ? (
-                  <button
-                    onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
-                    disabled={setMemberPaid.isPending}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
-                      m.paid
-                        ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
-                        : 'bg-union-navy text-white/50 hover:text-white hover:bg-union-blue/20'
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-white/30 uppercase tracking-wider border-b border-union-blue/10">
+                <th className="text-left pb-2 font-semibold">Participante</th>
+                <th className="text-left pb-2 font-semibold">Ingresó</th>
+                <th className="text-left pb-2 font-semibold">Método</th>
+                <th className="text-right pb-2 font-semibold">Monto</th>
+                <th className="text-right pb-2 font-semibold">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-union-blue/5">
+              {filtered.map((m) => (
+                <tr key={m.user_id} className="hover:bg-union-blue/5 transition-colors">
+                  <td className="py-2.5 pr-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold text-union-blue">
+                            {(m.username ?? '?')[0].toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-semibold text-white truncate max-w-[140px]">{m.username ?? '—'}</span>
+                    </div>
+                  </td>
+                  <td className="py-2.5 pr-4 text-white/40 whitespace-nowrap">
+                    {new Date(m.joined_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="py-2.5 pr-4">
+                    {m.paid ? <PaymentMethodBadge method={m.payment_method} reason={m.freepass_reason} /> : <span className="text-white/20">—</span>}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right whitespace-nowrap">
+                    {m.payment_amount != null
+                      ? <span className="text-yellow-400 font-semibold">${m.payment_amount.toLocaleString('es-AR')}</span>
+                      : m.paid && m.payment_method === 'freepass'
+                        ? <span className="text-white/30">Free pass</span>
+                        : <span className="text-white/20">—</span>
+                    }
+                  </td>
+                  <td className="py-2.5 text-right">
+                    {tournament.entry_fee > 0 ? (
+                      <button
+                        onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
+                        disabled={setMemberPaid.isPending}
+                        className={cn(
+                          'px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                          m.paid
+                            ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
+                            : 'bg-union-navy text-white/50 hover:text-white hover:bg-union-blue/20'
+                        )}
+                      >
+                        {m.paid ? '✓ Pagado' : 'Sin pago'}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-white/20">Gratis</span>
                     )}
-                  >
-                    {m.paid ? '✓ Pagado' : 'Sin pago'}
-                  </button>
-                ) : (
-                  <span className="text-xs text-white/20 px-2">Gratis</span>
-                )}
-              </div>
-            </div>
-          ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       <p className="text-xs text-white/30 mt-4 pt-3 border-t border-union-blue/10 text-right">
