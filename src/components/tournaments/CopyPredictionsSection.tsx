@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircle2, Copy } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { useUserTournamentsWithPredictions, useCopyPredictions } from '../../hooks/usePredictions'
@@ -13,6 +13,9 @@ export function CopyPredictionsSection({ userId, targetTournamentId }: Props) {
   const copyPredictions = useCopyPredictions()
   const [selectedId, setSelectedId] = useState<string>('')
   const [copiedCount, setCopiedCount] = useState<number | null>(null)
+
+  // Resetear resultado cuando el usuario cambia la fuente
+  useEffect(() => { setCopiedCount(null) }, [selectedId])
 
   if (isLoading) return (
     <div className="rounded-xl border border-union-blue/20 bg-union-navy-light p-4">
@@ -64,7 +67,7 @@ export function CopyPredictionsSection({ userId, targetTournamentId }: Props) {
         <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
           <CheckCircle2 size={16} />
           {copiedCount === 0
-            ? 'No había pronósticos nuevos para copiar'
+            ? 'No había partidos pendientes para copiar'
             : `${copiedCount} pronóstico${copiedCount !== 1 ? 's' : ''} copiado${copiedCount !== 1 ? 's' : ''}`}
         </div>
       ) : (

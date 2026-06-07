@@ -19,9 +19,10 @@ import type { Match, MatchStage, TournamentTypeAdmin } from '../types'
 import { useIsAdmin, useIsOrganizer } from '../hooks/useAuth'
 import { UserPredictionsModal } from '../components/leaderboard/UserPredictionsModal'
 
-// Contexto de solo lectura para el panel de admin
-const ReadOnlyCtx = createContext(false)
-const useReadOnly = () => useContext(ReadOnlyCtx)
+// Contexto de permisos para el panel de admin
+const AdminCtx = createContext({ readOnly: false, isOrganizer: false })
+const useReadOnly = () => useContext(AdminCtx).readOnly
+const useIsOrganizerCtx = () => useContext(AdminCtx).isOrganizer
 
 // ─── Types ────────────────────────────────────────────────────
 interface AdminUser {
@@ -166,7 +167,7 @@ export default function Admin() {
   const isReadOnly = !isAdmin && isOrganizer
 
   return (
-    <ReadOnlyCtx.Provider value={isReadOnly}>
+    <AdminCtx.Provider value={{ readOnly: isReadOnly, isOrganizer: !isAdmin && isOrganizer }}>
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
@@ -177,8 +178,8 @@ export default function Admin() {
         <div className="mb-5 flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
           <Eye size={16} className="text-amber-400 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-amber-300">Vista de organizador — solo lectura</p>
-            <p className="text-xs text-amber-400/60 mt-0.5">Podés ver toda la información pero no podés tomar acciones.</p>
+            <p className="text-sm font-semibold text-amber-300">Vista de organizador</p>
+            <p className="text-xs text-amber-400/60 mt-0.5">Podés gestionar pases libres y pagos del torneo global. El resto es solo lectura.</p>
           </div>
         </div>
       )}
@@ -214,7 +215,7 @@ export default function Admin() {
       {activeTab === 'types'   && <TournamentTypesTab />}
       {activeTab === 'torneos' && <TorneosTab />}
     </Layout>
-    </ReadOnlyCtx.Provider>
+    </AdminCtx.Provider>
   )
 }
 
@@ -658,6 +659,7 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
   const deleteUser = useAdminDeleteUser()
   const setOrganizer = useAdminSetOrganizer()
   const readOnly = useReadOnly()
+  const isOrganizer = useIsOrganizerCtx()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [selectedReason, setSelectedReason] = useState<string>('')
@@ -813,10 +815,9 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                 </div>
                 <button
                   onClick={handleToggleFreePass}
-                  disabled={toggleFreePass.isPending || readOnly}
+                  disabled={toggleFreePass.isPending || (readOnly && !isOrganizer)}
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                    readOnly ? 'opacity-40 cursor-not-allowed' : '',
                     user.free_pass
                       ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
@@ -845,27 +846,34 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
                       {m.entry_fee > 0 ? ` · $${m.entry_fee.toLocaleString('es-AR')}` : ' · Gratis'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (m.entry_fee === 0 || readOnly) return
-                      if (m.paid) {
-                        setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: false })
-                      } else {
-                        openPayDialog(m)
-                      }
-                    }}
-                    disabled={setMemberPaid.isPending || m.entry_fee === 0 || readOnly}
-                    className={cn(
-                      'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                      m.entry_fee === 0
-                        ? 'bg-union-navy-light text-white/20 cursor-default'
-                        : m.paid
-                        ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
-                        : 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
-                    )}
-                  >
-                    {m.entry_fee === 0 ? 'Gratis' : m.paid ? '✓ Pagado' : 'Sin pago'}
-                  </button>
+                  {(() => {
+                    const canEdit = !readOnly || (isOrganizer && m.tournament_type === 'global')
+                    return (
+                      <button
+                        onClick={() => {
+                          if (m.entry_fee === 0 || !canEdit) return
+                          if (m.paid) {
+                            setMemberPaid.mutate({ userId: user.user_id, tournamentId: m.tournament_id, paid: false })
+                          } else {
+                            openPayDialog(m)
+                          }
+                        }}
+                        disabled={setMemberPaid.isPending || m.entry_fee === 0 || !canEdit}
+                        className={cn(
+                          'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                          m.entry_fee === 0
+                            ? 'bg-union-navy-light text-white/20 cursor-default'
+                            : m.paid
+                            ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
+                            : canEdit
+                            ? 'bg-union-navy-light text-white/50 hover:text-white hover:bg-union-blue/20'
+                            : 'bg-union-navy-light text-white/20 cursor-default'
+                        )}
+                      >
+                        {m.entry_fee === 0 ? 'Gratis' : m.paid ? '✓ Pagado' : 'Sin pago'}
+                      </button>
+                    )
+                  })()}
                 </div>
               ))
             )}
