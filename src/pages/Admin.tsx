@@ -1545,6 +1545,7 @@ function useAdminSetMemberPaid() {
       qc.invalidateQueries({ queryKey: ['admin-user-memberships', userId] })
       qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] })
       qc.invalidateQueries({ queryKey: ['admin-global-tournament-stats'] })
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
     },
   })
 }
