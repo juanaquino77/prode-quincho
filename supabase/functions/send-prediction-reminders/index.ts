@@ -58,6 +58,70 @@ Deno.serve(async (req) => {
     return json({ ok: true, sent })
   }
 
+  // Modo unpaid_reminder: aviso a quienes no pagaron el torneo global
+  if (body.blast_type === 'unpaid_reminder') {
+    // Calcular countdown al debut
+    const KICKOFF_UTC = new Date('2026-06-12T01:00:00Z')
+    const now = new Date()
+    const diffMs = KICKOFF_UTC.getTime() - now.getTime()
+    const diffHours = Math.max(0, Math.floor(diffMs / 3_600_000))
+    const days = Math.floor(diffHours / 24)
+    const hours = diffHours % 24
+
+    // Buscar torneo global activo
+    const { data: globalTournament } = await supabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('type', 'global')
+      .eq('is_active', true)
+      .single()
+
+    if (!globalTournament) return json({ error: 'No hay torneo global activo' }, 404)
+
+    // Usuarios inscriptos que no pagaron y no tienen free_pass
+    const { data: unpaidMembers } = await supabase
+      .from('tournament_members')
+      .select('user_id')
+      .eq('tournament_id', globalTournament.id)
+      .eq('paid', false)
+
+    if (!unpaidMembers?.length) return json({ ok: true, sent: 0, message: 'Todos pagaron 🎉' })
+
+    // Filtrar los que tienen free_pass (no necesitan pagar)
+    const unpaidIds = unpaidMembers.map(m => m.user_id)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, free_pass')
+      .in('id', unpaidIds)
+
+    const freePassIds = new Set((profiles ?? []).filter(p => p.free_pass).map(p => p.id))
+    const debtorIds = unpaidIds.filter(id => !freePassIds.has(id))
+
+    if (!debtorIds.length) return json({ ok: true, sent: 0, message: 'Todos pagaron o tienen pase libre 🎉' })
+
+    // Obtener emails
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
+
+    let sent = 0
+    for (const userId of debtorIds) {
+      const email = emailMap.get(userId)
+      if (!email) continue
+      const res = await fetch(RESEND_API, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'El Quincho <noreply@prodequincho.com>',
+          to: email,
+          subject: `⚠️ Tu inscripción al Prode del Mundial está pendiente de pago`,
+          html: buildUnpaidReminderHtml(days, hours, globalTournament.name),
+        }),
+      })
+      if (res.ok) sent++
+    }
+    return json({ ok: true, sent, total_unpaid: debtorIds.length })
+  }
+
   // Modo force: envía anuncio a todos los miembros de torneos activos
   if (body.force) {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
@@ -207,6 +271,63 @@ Deno.serve(async (req) => {
 
   return json({ ok: true, totalSent })
 })
+
+function buildUnpaidReminderHtml(days: number, hours: number, tournamentName: string): string {
+  const countdown = days > 0
+    ? `<strong style="color:#f59e0b;">${days} días y ${hours} horas</strong>`
+    : `<strong style="color:#ef4444;">menos de ${hours} horas</strong>`
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+
+    <div style="text-align:center;margin-bottom:8px;"><span style="font-size:52px;">⚠️</span></div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;">El Quincho · Club Unión</p>
+    </div>
+
+    <div style="background:#0d1f3c;border:1px solid rgba(239,68,68,0.35);border-radius:16px;padding:32px;">
+      <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;">
+        Tu inscripción al prode del Mundial está <span style="color:#ef4444;">pendiente de pago</span>
+      </h1>
+
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:16px;margin:20px 0;text-align:center;">
+        <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.5);">Debut del Mundial</p>
+        <p style="margin:6px 0 0;font-size:17px;color:#ffffff;">Faltan ${countdown}</p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.35);">🇲🇽 México vs Sudáfrica 🇿🇦 · Miércoles 11 de junio</p>
+      </div>
+
+      <div style="background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:14px 16px;margin:20px 0;">
+        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.9);line-height:1.6;">
+          <strong style="color:#ffffff;">Importante:</strong> Si no abonás la inscripción antes del debut, los puntos que ganes en tus pronósticos <strong style="color:#ef4444;">no correrán</strong> hasta que esté saldada la cuota. Vas a quedar afuera de la competencia real mientras tanto.
+        </p>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,168,222,0.15);padding:20px 0;margin:20px 0;text-align:center;">
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.4);">Premio total acumulado</p>
+        <p style="margin:6px 0 0;font-size:32px;font-weight:900;color:#f59e0b;">+ $1.000.000</p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">No te pierdas la chance de llevarte el millón 🏆</p>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="https://prodequincho.com" style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:16px 36px;border-radius:10px;letter-spacing:0.3px;">
+          Abonar inscripción →
+        </a>
+      </div>
+
+      <p style="margin:20px 0 0;font-size:12px;color:rgba(255,255,255,0.3);text-align:center;line-height:1.6;">
+        ¿Ya pagaste? Avisale a los organizadores por WhatsApp para que confirmen tu pago.<br>
+        <span style="color:rgba(255,255,255,0.2);">${tournamentName}</span>
+      </p>
+    </div>
+
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">El Quincho · Club Unión Mar del Plata</p>
+  </div>
+</body>
+</html>`
+}
 
 function buildMundialCountdownHtml(days: number, hours: number): string {
   const countdown = days > 0
