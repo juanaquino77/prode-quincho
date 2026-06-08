@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function CopyPredictionsSection({ userId, targetTournamentId }: Props) {
-  const { data: sources = [], isLoading } = useUserTournamentsWithPredictions(userId, targetTournamentId)
+  const { data: sources = [], isLoading, error: sourcesError } = useUserTournamentsWithPredictions(userId, targetTournamentId)
   const copyPredictions = useCopyPredictions()
   const [selectedId, setSelectedId] = useState<string>('')
   const [copiedCount, setCopiedCount] = useState<number | null>(null)
@@ -20,6 +20,11 @@ export function CopyPredictionsSection({ userId, targetTournamentId }: Props) {
   if (isLoading) return (
     <div className="rounded-xl border border-union-blue/20 bg-union-navy-light p-4">
       <p className="text-xs text-white/30 animate-pulse">Buscando pronósticos anteriores...</p>
+    </div>
+  )
+  if (sourcesError) return (
+    <div className="rounded-xl border border-red-500/20 bg-union-navy-light p-4">
+      <p className="text-xs text-red-400">Error al buscar torneos: {(sourcesError as Error).message}</p>
     </div>
   )
   if (!sources.length) return null
