@@ -47,7 +47,7 @@ export default function Login() {
           <div className="mt-3 inline-flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full px-4 py-1.5">
             <span className="text-yellow-400 text-sm font-bold">💰 Hasta $1.000.000 en premios</span>
           </div>
-          <p className="text-white/30 text-xs mt-1.5">Hacete del millón con solo $20.000</p>
+          <p className="text-white/30 text-xs mt-1.5">Cuanto más somos, más crece el pozo</p>
         </div>
 
         <div className="bg-union-navy-light border border-union-blue/20 rounded-2xl p-6 shadow-2xl">

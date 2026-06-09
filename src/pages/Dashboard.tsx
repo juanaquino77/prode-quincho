@@ -93,7 +93,7 @@ export default function Dashboard() {
             <span className="text-2xl shrink-0">💰</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-yellow-300">¡Hasta $1.000.000 en premios!</p>
-              <p className="text-xs text-yellow-400/60 mt-0.5">Hacete del millón con solo $20.000 · Cuanto más somos, más crece el pozo</p>
+              <p className="text-xs text-yellow-400/60 mt-0.5">Cuanto más somos, más crece el pozo</p>
             </div>
             <ArrowRight size={15} className="text-yellow-400 shrink-0" />
           </div>
