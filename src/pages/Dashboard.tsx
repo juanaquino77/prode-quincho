@@ -92,7 +92,7 @@ export default function Dashboard() {
           <div className="mb-5 flex items-center gap-3 bg-gradient-to-r from-yellow-500/10 to-amber-600/10 border border-yellow-500/25 rounded-xl px-4 py-3 hover:from-yellow-500/15 hover:to-amber-600/15 transition-colors">
             <span className="text-2xl shrink-0">💰</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-yellow-300">¡Hasta $1.000.000 en premios!</p>
+              <p className="text-sm font-bold text-yellow-300">¡Mas de $500.000 en premios!</p>
               <p className="text-xs text-yellow-400/60 mt-0.5">Cuanto más somos, más crece el pozo</p>
             </div>
             <ArrowRight size={15} className="text-yellow-400 shrink-0" />
@@ -148,7 +148,7 @@ export default function Dashboard() {
           <p className="text-xs text-white/40 mt-0.5">Cuanto más somos, más grande el pozo</p>
         </div>
         <a
-          href={`https://wa.me/?text=${encodeURIComponent('🏆 ¡Animate al Prode del Mundial 2026!\nHay hasta $1.000.000 en premios 💰\nSumate acá 👉 www.prodequincho.com')}`}
+          href={`https://wa.me/?text=${encodeURIComponent('🏆 ¡Animate al Prode del Mundial 2026!\nHay mas de $500.000 en premios 💰\nSumate acá 👉 www.prodequincho.com')}`}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

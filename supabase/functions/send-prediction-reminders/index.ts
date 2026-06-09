@@ -307,8 +307,8 @@ function buildUnpaidReminderHtml(days: number, hours: number, tournamentName: st
 
       <div style="border-top:1px solid rgba(0,168,222,0.15);padding:20px 0;margin:20px 0;text-align:center;">
         <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.4);">Premio total acumulado</p>
-        <p style="margin:6px 0 0;font-size:32px;font-weight:900;color:#f59e0b;">+ $1.000.000</p>
-        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">No te pierdas la chance de llevarte el millón 🏆</p>
+        <p style="margin:6px 0 0;font-size:32px;font-weight:900;color:#f59e0b;">+ $500.000</p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">No te pierdas la chance de llevarte el medio millón 🏆</p>
       </div>
 
       <div style="text-align:center;">
@@ -348,7 +348,7 @@ function buildMundialCountdownHtml(days: number, hours: number): string {
       <div style="text-align:center;margin:16px 0;">${countdown}</div>
       <div style="border-top:1px solid rgba(0,168,222,0.15);border-bottom:1px solid rgba(0,168,222,0.15);padding:16px 0;margin:20px 0;text-align:center;">
         <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.4);">Premio total acumulado</p>
-        <p style="margin:4px 0 0;font-size:28px;font-weight:900;color:#f59e0b;">+ $1.000.000</p>
+        <p style="margin:4px 0 0;font-size:28px;font-weight:900;color:#f59e0b;">+ $500.000</p>
         <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">El pozo crece con cada inscripción</p>
       </div>
       <p style="margin:0 0 8px;font-size:15px;color:rgba(255,255,255,0.85);line-height:1.6;text-align:center;">
