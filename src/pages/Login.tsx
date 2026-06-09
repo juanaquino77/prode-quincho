@@ -45,7 +45,7 @@ export default function Login() {
           <h1 className="text-3xl font-bold text-white">Prode Quincho</h1>
           <p className="text-white/50 mt-1">Mundial 2026 · El Quincho</p>
           <div className="mt-3 inline-flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 rounded-full px-4 py-1.5">
-            <span className="text-yellow-400 text-sm font-bold">💰 +$1.000.000 en premios</span>
+            <span className="text-yellow-400 text-sm font-bold">💰 Hasta $1.000.000 en premios</span>
           </div>
           <p className="text-white/30 text-xs mt-1.5">Hacete del millón con solo $20.000</p>
         </div>
