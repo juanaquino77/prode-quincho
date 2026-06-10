@@ -174,6 +174,7 @@ export interface LeaderboardEntry {
   total_predictions: number
   corazonadas_acertadas?: number
   rank: number
+  paid?: boolean
 }
 
 export interface AuthUser {

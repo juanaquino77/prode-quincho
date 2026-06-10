@@ -72,6 +72,16 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                           {clickable && (
                             <span className="ml-1 text-[10px] text-white/20 hidden group-hover:inline">ver pronósticos</span>
                           )}
+                          {isAdmin && (
+                            <span className={cn(
+                              'ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded',
+                              entry.paid
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-red-500/20 text-red-400'
+                            )}>
+                              {entry.paid ? '✓ pagó' : '✗ debe'}
+                            </span>
+                          )}
                         </p>
                         {entry.full_name && <p className="text-xs text-white/40">{entry.full_name}</p>}
                       </div>
