@@ -82,6 +82,11 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                               {entry.paid ? '✓ pagó' : '✗ debe'}
                             </span>
                           )}
+                          {isAdmin && entry.paid && entry.total_predictions === 0 && (
+                            <span className="ml-1 text-[10px] font-bold px-1 py-0.5 rounded bg-amber-500/30 text-amber-300 animate-pulse">
+                              avisar!!!
+                            </span>
+                          )}
                         </p>
                         {entry.full_name && <p className="text-xs text-white/40">{entry.full_name}</p>}
                       </div>
