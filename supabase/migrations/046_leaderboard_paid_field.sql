@@ -1,4 +1,6 @@
--- Agrega campo `paid` al resultado de get_leaderboard (visible solo para admins vía SECURITY DEFINER)
+-- Agrega campos `paid` y `free_pass` al resultado de get_leaderboard (visible solo para admins vía SECURITY DEFINER)
+DROP FUNCTION IF EXISTS public.get_leaderboard(uuid);
+
 CREATE OR REPLACE FUNCTION public.get_leaderboard(p_tournament_id uuid)
 RETURNS TABLE (
   user_id               uuid,
@@ -11,7 +13,8 @@ RETURNS TABLE (
   total_predictions     bigint,
   corazonadas_acertadas bigint,
   rank                  bigint,
-  paid                  boolean
+  paid                  boolean,
+  free_pass             boolean
 ) LANGUAGE sql SECURITY DEFINER AS $$
   SELECT
     pr.id                                                              AS user_id,
@@ -32,13 +35,14 @@ RETURNS TABLE (
       ORDER BY COALESCE(SUM(p.points_earned), 0)             DESC,
                COUNT(CASE WHEN p.points_earned >= 3 THEN 1 END) DESC
     )                                                                  AS rank,
-    tm.paid                                                            AS paid
+    tm.paid                                                            AS paid,
+    COALESCE(pr.free_pass, false)                                      AS free_pass
   FROM public.tournament_members tm
   JOIN public.profiles pr ON pr.id = tm.user_id
   LEFT JOIN public.predictions p
          ON p.user_id      = tm.user_id
         AND p.tournament_id = p_tournament_id
   WHERE tm.tournament_id = p_tournament_id
-  GROUP BY pr.id, pr.username, pr.full_name, pr.avatar_url, tm.paid
+  GROUP BY pr.id, pr.username, pr.full_name, pr.avatar_url, tm.paid, pr.free_pass
   ORDER BY total_points DESC, exact_scores DESC;
 $$;

@@ -175,6 +175,7 @@ export interface LeaderboardEntry {
   corazonadas_acertadas?: number
   rank: number
   paid?: boolean
+  free_pass?: boolean
 }
 
 export interface AuthUser {

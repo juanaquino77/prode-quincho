@@ -75,11 +75,13 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                           {isAdmin && (
                             <span className={cn(
                               'ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded',
-                              entry.paid
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-red-500/20 text-red-400'
+                              entry.free_pass
+                                ? 'bg-purple-500/20 text-purple-300'
+                                : entry.paid
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-red-500/20 text-red-400'
                             )}>
-                              {entry.paid ? '✓ pagó' : '✗ debe'}
+                              {entry.free_pass ? '🎟 pase libre' : entry.paid ? '✓ pagó' : '✗ debe'}
                             </span>
                           )}
                           {isAdmin && entry.paid && entry.total_predictions === 0 && (
