@@ -58,6 +58,46 @@ Deno.serve(async (req) => {
     return json({ ok: true, sent })
   }
 
+  // Modo mundial_arranca: aviso a TODOS los miembros del torneo global
+  if (body.blast_type === 'mundial_arranca') {
+    const { data: globalTournament } = await supabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('type', 'global')
+      .eq('is_active', true)
+      .single()
+
+    if (!globalTournament) return json({ error: 'No hay torneo global activo' }, 404)
+
+    const { data: members } = await supabase
+      .from('tournament_members')
+      .select('user_id')
+      .eq('tournament_id', globalTournament.id)
+
+    if (!members?.length) return json({ ok: true, sent: 0 })
+
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
+
+    let sent = 0
+    for (const m of members) {
+      const email = emailMap.get(m.user_id)
+      if (!email) continue
+      const res = await fetch(RESEND_API, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'El Quincho <noreply@prodequincho.com>',
+          to: email,
+          subject: `⚽ ¡Mañana arranca el Mundial! Aboná tu entrada y cargá tus pronósticos especiales`,
+          html: buildMundialArrancarHtml(),
+        }),
+      })
+      if (res.ok) sent++
+    }
+    return json({ ok: true, sent })
+  }
+
   // Modo unpaid_reminder: aviso a quienes no pagaron el torneo global
   if (body.blast_type === 'unpaid_reminder') {
     // Calcular countdown al debut
@@ -271,6 +311,48 @@ Deno.serve(async (req) => {
 
   return json({ ok: true, totalSent })
 })
+
+function buildMundialArrancarHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+    <div style="text-align:center;margin-bottom:8px;"><span style="font-size:52px;">⚽</span></div>
+    <div style="text-align:center;margin-bottom:28px;">
+      <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;">El Quincho · Club Unión</p>
+    </div>
+    <div style="background:#0d1f3c;border:1px solid rgba(0,168,222,0.3);border-radius:16px;padding:28px;">
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:800;color:#ffffff;text-align:center;line-height:1.3;">¡Mañana arranca el Mundial! 🏆</h1>
+      <p style="margin:0 0 24px;font-size:13px;color:rgba(255,255,255,0.4);text-align:center;">Miércoles 11 de junio · México vs Sudáfrica</p>
+
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:18px 20px;margin-bottom:16px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:1px;">💸 Si no abonaste la entrada al torneo</p>
+        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.85);line-height:1.6;">Los puntos que sumes <strong style="color:#ffffff;">no correrán en la tabla general</strong> hasta que esté saldada la cuota. Cada partido que pase sin abonar es ventaja para los demás.</p>
+      </div>
+
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:18px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:1px;">⏳ Pronósticos especiales</p>
+        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.85);line-height:1.6;">Campeón, goleador y mejor jugador se cierran <strong style="color:#ffffff;">con el pitazo inicial del primer partido</strong>. Si no los llenaste, le estás regalando puntos a los demás.</p>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,168,222,0.15);padding:20px 0;margin-bottom:24px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.4);">Premio total acumulado</p>
+        <p style="margin:6px 0 0;font-size:32px;font-weight:900;color:#f59e0b;">+ $500.000</p>
+        <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.3);">No te pierdas la chance de llevarte el medio millón 🏆</p>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="https://prode-quincho.vercel.app" style="display:inline-block;background:#00a8de;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 36px;border-radius:10px;letter-spacing:0.3px;">Entrar al prode →</a>
+      </div>
+
+      <p style="margin:20px 0 0;font-size:12px;color:rgba(255,255,255,0.25);text-align:center;line-height:1.6;">¿Ya abonaste? Avisale a los organizadores para que confirmen tu entrada.</p>
+    </div>
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">El Quincho · Club Unión Mar del Plata</p>
+  </div>
+</body>
+</html>`
+}
 
 function buildUnpaidReminderHtml(days: number, hours: number, tournamentName: string): string {
   const countdown = days > 0

@@ -902,14 +902,8 @@ function UserActionsModal({ user, onClose }: { user: AdminUser | null; onClose: 
             </div>
           )}
 
-          {/* Notificaciones — próximamente */}
-          <div className="border border-union-blue/10 rounded-xl p-3 space-y-2 opacity-40 pointer-events-none select-none">
-            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Notificaciones (próximamente)</p>
-            <div className="flex gap-2">
-              <button className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/40 text-xs font-medium">✉️ Enviar email</button>
-              <button className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/40 text-xs font-medium">💬 WhatsApp</button>
-            </div>
-          </div>
+          {/* Notificaciones */}
+          <MundialArrancarBlast />
 
           {/* Zona peligrosa — solo admin */}
           {!user.user_is_admin && !readOnly && (
@@ -2071,5 +2065,57 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
         {filtered.length} de {members.length} participante{members.length !== 1 ? 's' : ''}
       </p>
     </Modal>
+  )
+}
+
+function MundialArrancarBlast() {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const [sent, setSent] = useState<number>(0)
+  const [confirm, setConfirm] = useState(false)
+
+  async function handleSend() {
+    setStatus('sending')
+    setConfirm(false)
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-prediction-reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-reminder-secret': 'prode-reminder-2026' },
+        body: JSON.stringify({ blast_type: 'mundial_arranca' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error')
+      setSent(data.sent ?? 0)
+      setStatus('done')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="border border-union-blue/10 rounded-xl p-3 space-y-2">
+      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Notificaciones</p>
+      {status === 'done' ? (
+        <p className="text-xs text-green-400 py-1">✓ Email enviado a {sent} participantes</p>
+      ) : status === 'error' ? (
+        <p className="text-xs text-red-400 py-1">✗ Error al enviar. Intentá de nuevo.</p>
+      ) : confirm ? (
+        <div className="space-y-2">
+          <p className="text-xs text-white/60">¿Confirmar envío del email "arranca el Mundial" a todos los participantes?</p>
+          <div className="flex gap-2">
+            <button onClick={handleSend} className="flex-1 py-2 rounded-lg bg-union-blue text-white text-xs font-semibold">Sí, enviar</button>
+            <button onClick={() => setConfirm(false)} className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/50 text-xs font-medium">Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirm(true)}
+          disabled={status === 'sending'}
+          className="w-full py-2 rounded-lg bg-union-navy-light hover:bg-union-blue/20 text-white/70 hover:text-white text-xs font-medium transition-colors disabled:opacity-40"
+        >
+          {status === 'sending' ? '⏳ Enviando...' : '✉️ Email "arranca el Mundial"'}
+        </button>
+      )}
+    </div>
   )
 }
