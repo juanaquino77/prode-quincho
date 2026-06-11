@@ -5,7 +5,7 @@ import { Button } from '../ui/Button'
 import { WC2026_PLAYERS, WC2026_TEAMS } from '../../data/wc2026players'
 import type { SpecialPrediction } from '../../types'
 
-const LOCK_DATE = new Date('2026-06-11T23:00:00Z') // primer partido
+const LOCK_DATE = new Date('2026-06-11T19:00:00Z') // México vs Sudáfrica — 16:00 AR
 
 interface Props {
   tournamentId: string
