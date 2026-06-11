@@ -1984,15 +1984,17 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
     else { setSortKey(key); setSortDir(key === 'username' ? 'asc' : 'desc') }
   }
 
-  // Candidatos inactivos: sin pago y sin predicciones
-  const inactiveCandidates = members.filter(m => !m.paid && m.prediction_count === 0)
-  const activeMembers = members.filter(m => m.is_active)
-  const inactiveMembers = members.filter(m => !m.is_active)
+  // is_active puede ser undefined si el RPC viejo no lo retorna → tratarlo como true
+  const isActive = (m: AdminMember) => m.is_active !== false
+  const activeMembers = members.filter(m => isActive(m))
+  const inactiveMembers = members.filter(m => !isActive(m))
+  // Candidatos a deshabilitar: sin pago, sin pronósticos, activos aún
+  const inactiveCandidates = activeMembers.filter(m => !m.paid && (m.prediction_count ?? 1) === 0)
 
-  const baseFiltered = filter === 'all' ? activeMembers
+  const baseFiltered = filter === 'inactive' ? inactiveMembers
     : filter === 'paid' ? activeMembers.filter(m => m.paid)
     : filter === 'unpaid' ? activeMembers.filter(m => !m.paid)
-    : inactiveMembers
+    : [...activeMembers, ...inactiveMembers]  // 'all': activos primero, inactivos griseados al final
   const filtered = [...baseFiltered].sort((a, b) => {
     let diff = 0
     if (sortKey === 'username') diff = (a.username ?? '').localeCompare(b.username ?? '')
@@ -2111,12 +2113,12 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
             </thead>
             <tbody className="divide-y divide-union-blue/5">
               {filtered.map((m) => (
-                <tr key={m.user_id} className="hover:bg-union-blue/5 transition-colors">
+                <tr key={m.user_id} className={cn('transition-colors', isActive(m) ? 'hover:bg-union-blue/5' : 'opacity-40')}>
                   <td className="py-2.5 pr-4">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-union-blue/20 border border-union-blue/30 flex items-center justify-center overflow-hidden shrink-0">
                         {m.avatar_url ? (
-                          <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover grayscale" />
                         ) : (
                           <span className="text-xs font-bold text-union-blue">
                             {(m.username ?? '?')[0].toUpperCase()}
@@ -2125,10 +2127,13 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
                       </div>
                       <div className="min-w-0">
                         <span className="font-semibold text-white truncate block max-w-[140px]">{m.username ?? '—'}</span>
-                        {tournament.type === 'global' && m.prediction_count > 0 && !m.has_special_predictions && (
+                        {!isActive(m) && (
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/10 text-white/50 whitespace-nowrap">Deshabilitado</span>
+                        )}
+                        {isActive(m) && tournament.type === 'global' && m.prediction_count > 0 && !m.has_special_predictions && (
                           <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 whitespace-nowrap">Sin especiales</span>
                         )}
-                        {tournament.type === 'global' && m.prediction_count === 0 && (
+                        {isActive(m) && tournament.type === 'global' && m.prediction_count === 0 && (
                           <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400/70 whitespace-nowrap">Sin pronósticos</span>
                         )}
                       </div>
