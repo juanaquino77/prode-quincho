@@ -59,16 +59,22 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatMatchDate(dateStr: string) {
-  return format(parseISO(dateStr), "d 'de' MMMM, HH:mm", { locale: es })
+  try {
+    return format(parseISO(dateStr), "d 'de' MMMM, HH:mm", { locale: es })
+  } catch { return dateStr }
 }
 
 export function formatShortDate(dateStr: string) {
-  return format(toARDisplay(parseISO(dateStr)), 'd MMM HH:mm', { locale: es })
+  try {
+    return format(toARDisplay(parseISO(dateStr)), 'd MMM HH:mm', { locale: es })
+  } catch { return dateStr }
 }
 
 /** Returns the deadline string for modifying a prediction */
 export function formatLockDeadline(lockAt: Date): string {
-  return format(toARDisplay(lockAt), "d MMM · HH:mm 'hs'", { locale: es })
+  try {
+    return format(toARDisplay(lockAt), "d MMM · HH:mm 'hs'", { locale: es })
+  } catch { return '' }
 }
 
 export function isMatchLocked(match: Match, lockAt?: Date): boolean {
@@ -91,6 +97,7 @@ export function computeRoundLockAt(
       m.stage === match.stage &&
       (match.stage !== 'group' || m.group_name === match.group_name),
   )
+  if (sameRound.length === 0) return new Date(parseISO(match.match_date).getTime() - lockHours * 3600_000)
   const earliest = Math.min(...sameRound.map((m) => parseISO(m.match_date).getTime()))
   return new Date(earliest - lockHours * 3600_000)
 }
