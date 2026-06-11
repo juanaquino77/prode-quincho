@@ -28,6 +28,57 @@ Deno.serve(async (req) => {
 
   const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
 
+  // Modo mundial_final: último aviso con cuenta regresiva + especiales se bloquean
+  if (body.blast_type === 'mundial_final') {
+    const { data: globalTournament } = await supabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('type', 'global')
+      .eq('is_active', true)
+      .single()
+
+    if (!globalTournament) return json({ error: 'No hay torneo global activo' }, 404)
+
+    const { data: members } = await supabase
+      .from('tournament_members')
+      .select('user_id')
+      .eq('tournament_id', globalTournament.id)
+
+    if (!members?.length) return json({ ok: true, sent: 0 })
+
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
+
+    // Primer partido: México vs Sudáfrica — 11 jun 2026 21:00 AR = 12 jun 00:00 UTC
+    const KICKOFF_UTC = new Date('2026-06-12T00:00:00Z')
+    const now = new Date()
+    const diffMs = Math.max(0, KICKOFF_UTC.getTime() - now.getTime())
+    const totalMins = Math.floor(diffMs / 60_000)
+    const days = Math.floor(totalMins / 1440)
+    const hours = Math.floor((totalMins % 1440) / 60)
+    const mins = totalMins % 60
+
+    let sent = 0
+    for (const m of members) {
+      const email = emailMap.get(m.user_id)
+      if (!email) continue
+      const res = await fetch(RESEND_API, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'El Quincho <noreply@prodequincho.com>',
+          to: email,
+          subject: days > 0
+            ? `⚽ El Mundial arranca en ${days} día${days > 1 ? 's' : ''} — cargá tus especiales antes del pitazo`
+            : `🚨 El Mundial arranca en ${hours}h ${mins}m — últimos minutos para los especiales`,
+          html: buildMundialFinalHtml(days, hours, mins),
+        }),
+      })
+      if (res.ok) sent++
+    }
+    return json({ ok: true, sent })
+  }
+
   // Modo mundial_countdown: aviso a TODOS los usuarios registrados
   if (body.blast_type === 'mundial_countdown') {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
@@ -311,6 +362,64 @@ Deno.serve(async (req) => {
 
   return json({ ok: true, totalSent })
 })
+
+function buildMundialFinalHtml(days: number, hours: number, mins: number): string {
+  const countdownText = days > 0
+    ? `${days} día${days > 1 ? 's' : ''} y ${hours}h`
+    : hours > 0
+    ? `${hours}h ${mins}m`
+    : `${mins} minutos`
+
+  const urgentColor = days === 0 ? '#ef4444' : '#f59e0b'
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a1628;font-family:system-ui,-apple-system,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+    <div style="text-align:center;margin-bottom:8px;"><span style="font-size:52px;">⚽</span></div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;">El Quincho · Club Unión</p>
+    </div>
+    <div style="background:#0d1f3c;border:1px solid rgba(0,168,222,0.3);border-radius:16px;padding:28px;">
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;text-align:center;line-height:1.3;">¡El Mundial arranca en</h1>
+
+      <!-- Cuenta regresiva -->
+      <div style="background:rgba(0,168,222,0.08);border:2px solid ${urgentColor};border-radius:12px;padding:20px;margin:16px 0;text-align:center;">
+        <p style="margin:0;font-size:40px;font-weight:900;color:${urgentColor};letter-spacing:-1px;">${countdownText}</p>
+        <p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">🇲🇽 México vs Sudáfrica 🇿🇦 — Miércoles 11 de junio, 21:00 hs AR</p>
+      </div>
+
+      <!-- Pronósticos especiales — URGENTE -->
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:18px 20px;margin-bottom:16px;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:1px;">🔒 Los especiales se bloquean al inicio</p>
+        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.85);line-height:1.6;">
+          <strong style="color:#ffffff;">Campeón, goleador y mejor jugador</strong> se cierran con el pitazo inicial del primer partido. Una vez que empiece México, <strong style="color:#ef4444;">no podés modificarlos más</strong>.
+        </p>
+        <div style="margin-top:14px;text-align:center;">
+          <a href="https://prodequincho.com/predicciones" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;">
+            Cargar pronósticos especiales →
+          </a>
+        </div>
+      </div>
+
+      <!-- También acordate de los partidos -->
+      <div style="background:rgba(0,168,222,0.08);border:1px solid rgba(0,168,222,0.2);border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;">
+          📋 <strong style="color:#ffffff;">Los pronósticos de partidos</strong> se siguen cerrando uno a uno antes de cada partido, así que todavía tenés tiempo para la fase de grupos. Pero los especiales, solo hasta hoy.
+        </p>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,168,222,0.15);padding:16px 0 4px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.3);">Premio total acumulado</p>
+        <p style="margin:4px 0 0;font-size:28px;font-weight:900;color:#f59e0b;">+ $500.000</p>
+      </div>
+    </div>
+    <p style="margin-top:20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">El Quincho · Club Unión Mar del Plata</p>
+  </div>
+</body>
+</html>`
+}
 
 function buildMundialArrancarHtml(): string {
   return `<!DOCTYPE html>

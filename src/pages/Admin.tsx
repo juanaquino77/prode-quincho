@@ -1476,6 +1476,7 @@ function TournamentTypeModal({
 interface AdminTournament {
   id: string
   name: string
+  type?: 'global' | 'friend'
   created_by: string | null
   creator_username: string | null
   entry_fee: number
@@ -1496,6 +1497,8 @@ interface AdminMember {
   freepass_reason: string | null
   payment_note: string | null
   payment_amount: number | null
+  prediction_count: number
+  has_special_predictions: boolean
 }
 
 interface AdminUserMembership {
@@ -1727,6 +1730,7 @@ function TorneosTab() {
             onClick={() => setGlobalMembersOf({
               id: g.tournament_id,
               name: g.tournament_name,
+              type: 'global',
               created_by: null,
               creator_username: null,
               entry_fee: Number(g.entry_fee),
@@ -2020,7 +2024,15 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
                           </span>
                         )}
                       </div>
-                      <span className="font-semibold text-white truncate max-w-[140px]">{m.username ?? '—'}</span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-white truncate block max-w-[140px]">{m.username ?? '—'}</span>
+                        {tournament.type === 'global' && m.prediction_count > 0 && !m.has_special_predictions && (
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 whitespace-nowrap">Sin especiales</span>
+                        )}
+                        {tournament.type === 'global' && m.prediction_count === 0 && (
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400/70 whitespace-nowrap">Sin pronósticos</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="py-2.5 pr-4 text-white/40 whitespace-nowrap">
@@ -2068,7 +2080,7 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
   )
 }
 
-function MundialArrancarBlast() {
+function BlastButton({ blastType, label, confirmText }: { blastType: string; label: string; confirmText: string }) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
   const [sent, setSent] = useState<number>(0)
   const [confirm, setConfirm] = useState(false)
@@ -2081,7 +2093,7 @@ function MundialArrancarBlast() {
       const res = await fetch(`${supabaseUrl}/functions/v1/send-prediction-reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-reminder-secret': 'prode-reminder-2026' },
-        body: JSON.stringify({ blast_type: 'mundial_arranca' }),
+        body: JSON.stringify({ blast_type: blastType }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error')
@@ -2092,30 +2104,42 @@ function MundialArrancarBlast() {
     }
   }
 
+  if (status === 'done') return <p className="text-xs text-green-400 py-1">✓ Enviado a {sent} participantes</p>
+  if (status === 'error') return <p className="text-xs text-red-400 py-1">✗ Error al enviar. Intentá de nuevo.</p>
+  if (confirm) return (
+    <div className="space-y-2">
+      <p className="text-xs text-white/60">{confirmText}</p>
+      <div className="flex gap-2">
+        <button onClick={handleSend} className="flex-1 py-2 rounded-lg bg-union-blue text-white text-xs font-semibold">Sí, enviar</button>
+        <button onClick={() => setConfirm(false)} className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/50 text-xs font-medium">Cancelar</button>
+      </div>
+    </div>
+  )
+  return (
+    <button
+      onClick={() => setConfirm(true)}
+      disabled={status === 'sending'}
+      className="w-full py-2 rounded-lg bg-union-navy-light hover:bg-union-blue/20 text-white/70 hover:text-white text-xs font-medium transition-colors disabled:opacity-40"
+    >
+      {status === 'sending' ? '⏳ Enviando...' : label}
+    </button>
+  )
+}
+
+function MundialArrancarBlast() {
   return (
     <div className="border border-union-blue/10 rounded-xl p-3 space-y-2">
       <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Notificaciones</p>
-      {status === 'done' ? (
-        <p className="text-xs text-green-400 py-1">✓ Email enviado a {sent} participantes</p>
-      ) : status === 'error' ? (
-        <p className="text-xs text-red-400 py-1">✗ Error al enviar. Intentá de nuevo.</p>
-      ) : confirm ? (
-        <div className="space-y-2">
-          <p className="text-xs text-white/60">¿Confirmar envío del email "arranca el Mundial" a todos los participantes?</p>
-          <div className="flex gap-2">
-            <button onClick={handleSend} className="flex-1 py-2 rounded-lg bg-union-blue text-white text-xs font-semibold">Sí, enviar</button>
-            <button onClick={() => setConfirm(false)} className="flex-1 py-2 rounded-lg bg-union-navy-light text-white/50 text-xs font-medium">Cancelar</button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setConfirm(true)}
-          disabled={status === 'sending'}
-          className="w-full py-2 rounded-lg bg-union-navy-light hover:bg-union-blue/20 text-white/70 hover:text-white text-xs font-medium transition-colors disabled:opacity-40"
-        >
-          {status === 'sending' ? '⏳ Enviando...' : '✉️ Email "arranca el Mundial"'}
-        </button>
-      )}
+      <BlastButton
+        blastType="mundial_final"
+        label="⚽ Email cuenta regresiva + especiales"
+        confirmText="Enviará a todos los participantes del torneo global el email con cuenta regresiva y recordatorio de especiales."
+      />
+      <BlastButton
+        blastType="mundial_arranca"
+        label='✉️ Email "arranca el Mundial" (pago + especiales)'
+        confirmText='¿Confirmar envío del email "arranca el Mundial" a todos los participantes?'
+      />
     </div>
   )
 }
