@@ -49,8 +49,8 @@ Deno.serve(async (req) => {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
     const emailMap = new Map<string, string>(allUsers.map((u) => [u.id, u.email ?? '']))
 
-    // Primer partido: México vs Sudáfrica — 11 jun 2026 21:00 AR = 12 jun 00:00 UTC
-    const KICKOFF_UTC = new Date('2026-06-12T00:00:00Z')
+    // Primer partido: México vs Sudáfrica — 11 jun 2026 16:00 AR = 19:00 UTC
+    const KICKOFF_UTC = new Date('2026-06-11T19:00:00Z')
     const now = new Date()
     const diffMs = Math.max(0, KICKOFF_UTC.getTime() - now.getTime())
     const totalMins = Math.floor(diffMs / 60_000)
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
 
     // Kick-off: México vs Sudáfrica — 11 jun 2026 20:00 CDT = 12 jun 01:00 UTC
-    const KICKOFF_UTC = new Date('2026-06-12T01:00:00Z')
+    const KICKOFF_UTC = new Date('2026-06-11T19:00:00Z')
     const now = new Date()
     const diffMs = KICKOFF_UTC.getTime() - now.getTime()
     const diffHours = Math.max(0, Math.floor(diffMs / 3_600_000))
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
   // Modo unpaid_reminder: aviso a quienes no pagaron el torneo global
   if (body.blast_type === 'unpaid_reminder') {
     // Calcular countdown al debut
-    const KICKOFF_UTC = new Date('2026-06-12T01:00:00Z')
+    const KICKOFF_UTC = new Date('2026-06-11T19:00:00Z')
     const now = new Date()
     const diffMs = KICKOFF_UTC.getTime() - now.getTime()
     const diffHours = Math.max(0, Math.floor(diffMs / 3_600_000))
@@ -387,7 +387,7 @@ function buildMundialFinalHtml(days: number, hours: number, mins: number): strin
       <!-- Cuenta regresiva -->
       <div style="background:rgba(0,168,222,0.08);border:2px solid ${urgentColor};border-radius:12px;padding:20px;margin:16px 0;text-align:center;">
         <p style="margin:0;font-size:40px;font-weight:900;color:${urgentColor};letter-spacing:-1px;">${countdownText}</p>
-        <p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">🇲🇽 México vs Sudáfrica 🇿🇦 — Miércoles 11 de junio, 21:00 hs AR</p>
+        <p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.4);">🇲🇽 México vs Sudáfrica 🇿🇦 — Miércoles 11 de junio, 16:00 hs AR</p>
       </div>
 
       <!-- Pronósticos especiales — URGENTE -->
