@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { parseISO, isPast } from 'date-fns'
+import { parseISO, isPast, format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { es } from 'date-fns/locale'
 
