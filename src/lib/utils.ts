@@ -1,7 +1,10 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO, isPast } from 'date-fns'
+import { parseISO, isPast } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { es } from 'date-fns/locale'
+
+const AR_TZ = 'America/Argentina/Buenos_Aires'
 import type { Match, MatchStage, PenaltyWinner } from '../types'
 import { KNOCKOUT_STAGES } from '../types'
 
@@ -52,12 +55,12 @@ export function formatMatchDate(dateStr: string) {
 }
 
 export function formatShortDate(dateStr: string) {
-  return format(parseISO(dateStr), 'd MMM HH:mm', { locale: es })
+  return formatInTimeZone(parseISO(dateStr), AR_TZ, 'd MMM HH:mm', { locale: es })
 }
 
 /** Returns the deadline string for modifying a prediction */
 export function formatLockDeadline(lockAt: Date): string {
-  return format(lockAt, "d MMM · HH:mm 'hs'", { locale: es })
+  return formatInTimeZone(lockAt, AR_TZ, "d MMM · HH:mm 'hs'", { locale: es })
 }
 
 export function isMatchLocked(match: Match, lockAt?: Date): boolean {
