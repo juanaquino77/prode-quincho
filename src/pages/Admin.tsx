@@ -1499,6 +1499,7 @@ interface AdminMember {
   payment_amount: number | null
   prediction_count: number
   has_special_predictions: boolean
+  is_active: boolean
 }
 
 interface AdminUserMembership {
@@ -1543,6 +1544,24 @@ function useAdminSetMemberPaid() {
       qc.invalidateQueries({ queryKey: ['admin-friend-tournaments'] })
       qc.invalidateQueries({ queryKey: ['admin-global-tournament-stats'] })
       qc.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+}
+
+function useAdminSetMemberActive() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, tournamentId, active }: { userId: string; tournamentId: string; active: boolean }) => {
+      const { error } = await supabase.rpc('admin_set_member_active', {
+        p_user_id: userId,
+        p_tournament_id: tournamentId,
+        p_active: active,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, { tournamentId }) => {
+      qc.invalidateQueries({ queryKey: ['admin-tournament-members', tournamentId] })
+      qc.invalidateQueries({ queryKey: ['leaderboard'] })
     },
   })
 }
@@ -1954,16 +1973,26 @@ type MemberSortKey = 'username' | 'joined_at' | 'payment_amount' | 'paid' | 'pre
 function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTournament; onClose: () => void }) {
   const { data: members = [], isLoading } = useAdminTournamentMembers(tournament.id)
   const setMemberPaid = useAdminSetMemberPaid()
-  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
+  const setMemberActive = useAdminSetMemberActive()
+  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid' | 'inactive'>('all')
   const [sortKey, setSortKey] = useState<MemberSortKey>('paid')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [confirmBulk, setConfirmBulk] = useState(false)
 
   function handleSort(key: MemberSortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir(key === 'username' ? 'asc' : 'desc') }
   }
 
-  const baseFiltered = filter === 'all' ? members : filter === 'paid' ? members.filter(m => m.paid) : members.filter(m => !m.paid)
+  // Candidatos inactivos: sin pago y sin predicciones
+  const inactiveCandidates = members.filter(m => !m.paid && m.prediction_count === 0)
+  const activeMembers = members.filter(m => m.is_active)
+  const inactiveMembers = members.filter(m => !m.is_active)
+
+  const baseFiltered = filter === 'all' ? activeMembers
+    : filter === 'paid' ? activeMembers.filter(m => m.paid)
+    : filter === 'unpaid' ? activeMembers.filter(m => !m.paid)
+    : inactiveMembers
   const filtered = [...baseFiltered].sort((a, b) => {
     let diff = 0
     if (sortKey === 'username') diff = (a.username ?? '').localeCompare(b.username ?? '')
@@ -1975,43 +2004,76 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
   })
 
   const paidCount = members.filter(m => m.paid).length
-
   const totalCollected = members.filter(m => m.paid && m.payment_amount).reduce((sum, m) => sum + (m.payment_amount ?? 0), 0)
+
+  async function handleBulkDisable() {
+    setConfirmBulk(false)
+    for (const m of inactiveCandidates.filter(m => m.is_active)) {
+      await setMemberActive.mutateAsync({ userId: m.user_id, tournamentId: tournament.id, active: false })
+    }
+  }
 
   return (
     <Modal open onClose={onClose} title={`Participantes — ${tournament.name}`} className="max-w-3xl">
       {/* Resumen */}
-      <div className="flex items-center gap-6 mb-4 pb-4 border-b border-union-blue/10">
+      <div className="flex items-center gap-4 mb-4 pb-4 border-b border-union-blue/10 flex-wrap">
         <div className="text-center">
-          <p className="text-2xl font-bold text-white">{members.length}</p>
-          <p className="text-xs text-white/40">total</p>
+          <p className="text-2xl font-bold text-white">{activeMembers.length}</p>
+          <p className="text-xs text-white/40">activos</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-green-400">{paidCount}</p>
           <p className="text-xs text-white/40">pagaron</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-red-400">{members.length - paidCount}</p>
+          <p className="text-2xl font-bold text-red-400">{activeMembers.length - paidCount}</p>
           <p className="text-xs text-white/40">sin pago</p>
         </div>
+        {inactiveMembers.length > 0 && (
+          <div className="text-center">
+            <p className="text-2xl font-bold text-white/30">{inactiveMembers.length}</p>
+            <p className="text-xs text-white/30">inactivos</p>
+          </div>
+        )}
         {totalCollected > 0 && (
           <div className="text-center">
             <p className="text-2xl font-bold text-yellow-400">${totalCollected.toLocaleString('es-AR')}</p>
             <p className="text-xs text-white/40">recaudado</p>
           </div>
         )}
-        {/* Filtro */}
-        <div className="ml-auto flex gap-1">
-          {(['all', 'paid', 'unpaid'] as const).map(f => (
+        {/* Filtros */}
+        <div className="ml-auto flex gap-1 flex-wrap">
+          {(['all', 'paid', 'unpaid', 'inactive'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
-                filter === f ? 'bg-union-blue text-white' : 'bg-union-navy text-white/40 hover:text-white'
+                filter === f
+                  ? f === 'inactive' ? 'bg-red-500/30 text-red-300' : 'bg-union-blue text-white'
+                  : 'bg-union-navy text-white/40 hover:text-white'
               )}>
-              {f === 'all' ? 'Todos' : f === 'paid' ? 'Pagaron' : 'Sin pago'}
+              {f === 'all' ? 'Activos' : f === 'paid' ? 'Pagaron' : f === 'unpaid' ? 'Sin pago' : `Inactivos (${inactiveMembers.length})`}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Bulk action para deshabilitar candidatos */}
+      {filter !== 'inactive' && inactiveCandidates.filter(m => m.is_active).length > 0 && (
+        <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between gap-3">
+          <p className="text-xs text-orange-300">
+            <span className="font-semibold">{inactiveCandidates.filter(m => m.is_active).length} usuarios</span> sin pago y sin pronósticos
+          </p>
+          {confirmBulk ? (
+            <div className="flex gap-2">
+              <button onClick={handleBulkDisable} className="px-3 py-1 rounded-lg bg-red-500/30 text-red-300 text-xs font-semibold hover:bg-red-500/40">Sí, deshabilitar</button>
+              <button onClick={() => setConfirmBulk(false)} className="px-3 py-1 rounded-lg bg-white/10 text-white/40 text-xs font-medium">Cancelar</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmBulk(true)} className="px-3 py-1 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-semibold hover:bg-orange-500/30 whitespace-nowrap">
+              Deshabilitar todos
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-white/40 text-sm py-4 text-center">Cargando...</p>
@@ -2087,22 +2149,37 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
                     }
                   </td>
                   <td className="py-2.5 text-right">
-                    {tournament.entry_fee > 0 ? (
+                    <div className="flex items-center justify-end gap-1.5">
+                      {tournament.entry_fee > 0 ? (
+                        <button
+                          onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
+                          disabled={setMemberPaid.isPending}
+                          className={cn(
+                            'px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                            m.paid
+                              ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
+                              : 'bg-union-navy text-white/50 hover:text-white hover:bg-union-blue/20'
+                          )}
+                        >
+                          {m.paid ? '✓ Pagado' : 'Sin pago'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-white/20">Gratis</span>
+                      )}
                       <button
-                        onClick={() => setMemberPaid.mutate({ userId: m.user_id, tournamentId: tournament.id, paid: !m.paid })}
-                        disabled={setMemberPaid.isPending}
+                        onClick={() => setMemberActive.mutate({ userId: m.user_id, tournamentId: tournament.id, active: !m.is_active })}
+                        disabled={setMemberActive.isPending}
+                        title={m.is_active ? 'Deshabilitar usuario' : 'Reactivar usuario'}
                         className={cn(
-                          'px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
-                          m.paid
-                            ? 'bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400'
-                            : 'bg-union-navy text-white/50 hover:text-white hover:bg-union-blue/20'
+                          'px-2 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                          m.is_active
+                            ? 'bg-white/5 text-white/20 hover:bg-red-500/20 hover:text-red-400'
+                            : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                         )}
                       >
-                        {m.paid ? '✓ Pagado' : 'Sin pago'}
+                        {m.is_active ? '⛔' : '✓ Reactivar'}
                       </button>
-                    ) : (
-                      <span className="text-xs text-white/20">Gratis</span>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

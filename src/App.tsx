@@ -17,6 +17,7 @@ import Profile from './pages/Profile'
 import Bracket from './pages/Bracket'
 import PaymentResult from './pages/PaymentResult'
 import JoinPage from './pages/JoinPage'
+import { InactiveAccountModal } from './components/InactiveAccountModal'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 } },
@@ -51,7 +52,9 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
+    <>
+      <InactiveAccountModal />
+      <Routes>
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/unirse/:inviteCode" element={<JoinPage />} />
       <Route path="/dashboard" element={<Dashboard />} />
@@ -66,6 +69,7 @@ function AppRoutes() {
       <Route path="/perfil" element={<Profile />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </>
   )
 }
 

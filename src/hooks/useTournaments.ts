@@ -144,6 +144,20 @@ export function useDeleteTournament() {
   })
 }
 
+export function useMyMembershipStatus(tournamentId: string | undefined) {
+  return useQuery({
+    queryKey: ['my-membership-status', tournamentId],
+    enabled: !!tournamentId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_my_membership_status', {
+        p_tournament_id: tournamentId,
+      })
+      if (error) return null
+      return (data?.[0] ?? null) as { is_active: boolean; paid: boolean } | null
+    },
+  })
+}
+
 export function useLeaderboard(tournamentId: string | undefined, hasLive = false) {
   return useQuery({
     queryKey: ['leaderboard', tournamentId],
