@@ -1,12 +1,20 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { parseISO, isPast, format } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
 import { es } from 'date-fns/locale'
-
-const AR_TZ = 'America/Argentina/Buenos_Aires'
 import type { Match, MatchStage, PenaltyWinner } from '../types'
 import { KNOCKOUT_STAGES } from '../types'
+
+// Argentina es siempre UTC-3 (sin horario de verano).
+// Devuelve un Date que, formateado con date-fns format(), muestra la hora argentina
+// independientemente del timezone del browser.
+function toARDisplay(date: Date): Date {
+  return new Date(
+    date.getTime()
+    - 3 * 3_600_000              // llevar a UTC-3
+    + date.getTimezoneOffset() * 60_000  // compensar el offset local del browser
+  )
+}
 
 // Mapeo día en español → getDay() (0=Domingo)
 const DAY_OF_WEEK: Record<string, number> = {
@@ -55,12 +63,12 @@ export function formatMatchDate(dateStr: string) {
 }
 
 export function formatShortDate(dateStr: string) {
-  return formatInTimeZone(parseISO(dateStr), AR_TZ, 'd MMM HH:mm', { locale: es })
+  return format(toARDisplay(parseISO(dateStr)), 'd MMM HH:mm', { locale: es })
 }
 
 /** Returns the deadline string for modifying a prediction */
 export function formatLockDeadline(lockAt: Date): string {
-  return formatInTimeZone(lockAt, AR_TZ, "d MMM · HH:mm 'hs'", { locale: es })
+  return format(toARDisplay(lockAt), "d MMM · HH:mm 'hs'", { locale: es })
 }
 
 export function isMatchLocked(match: Match, lockAt?: Date): boolean {
