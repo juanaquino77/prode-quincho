@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Trophy, Medal, User } from 'lucide-react'
+import { Trophy, Medal, User, ChevronUp, ChevronDown } from 'lucide-react'
 import { UserPredictionsModal } from './UserPredictionsModal'
 import type { LeaderboardEntry } from '../../types'
 import { cn } from '../../lib/utils'
+
+type SortKey = 'rank' | 'username' | 'total_points' | 'exact_scores' | 'corazonadas_acertadas' | 'correct_outcomes' | 'total_predictions'
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[]
@@ -17,11 +19,48 @@ interface LeaderboardTableProps {
 
 export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions, hasCorazonada, hasSpecialPredictions }: LeaderboardTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('rank')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'username' ? 'asc' : 'desc')
+    }
+  }
+
+  const sorted = [...entries].sort((a, b) => {
+    let diff = 0
+    if (sortKey === 'username') diff = (a.username ?? '').localeCompare(b.username ?? '')
+    else if (sortKey === 'rank') diff = a.rank - b.rank
+    else diff = ((a[sortKey] as number) ?? 0) - ((b[sortKey] as number) ?? 0)
+    return sortDir === 'asc' ? diff : -diff
+  })
 
   function handleRowClick(entry: LeaderboardEntry) {
     if (!tournamentId) return
     if (entry.user_id === currentUserId) return
     setSelectedEntry(entry)
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronUp size={11} className="ml-0.5 opacity-20 inline" />
+    return sortDir === 'asc'
+      ? <ChevronUp size={11} className="ml-0.5 text-white inline" />
+      : <ChevronDown size={11} className="ml-0.5 text-white inline" />
+  }
+
+  function Th({ col, label, className }: { col: SortKey; label: string; className?: string }) {
+    return (
+      <th
+        onClick={() => handleSort(col)}
+        className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors hover:text-white', sortKey === col ? 'text-white' : 'text-union-blue', className)}
+      >
+        {label}<SortIcon col={col} />
+      </th>
+    )
   }
 
   return (
@@ -30,17 +69,17 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
         <table className="w-full">
           <thead>
             <tr className="bg-union-navy-mid/50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-union-blue uppercase tracking-wider">#</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-union-blue uppercase tracking-wider">Jugador</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider">Pts</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden sm:table-cell">Exactos</th>
-              {hasCorazonada && <th className="px-4 py-3 text-right text-xs font-semibold text-amber-400/70 uppercase tracking-wider hidden sm:table-cell">💛 Coraz.</th>}
-              <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden md:table-cell">Resultados</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-union-blue uppercase tracking-wider hidden lg:table-cell">Pronóst.</th>
+              <Th col="rank" label="#" className="text-left" />
+              <Th col="username" label="Jugador" className="text-left" />
+              <Th col="total_points" label="Pts" className="text-right" />
+              <Th col="exact_scores" label="Exactos" className="text-right hidden sm:table-cell" />
+              {hasCorazonada && <Th col="corazonadas_acertadas" label="💛 Coraz." className="text-right hidden sm:table-cell text-amber-400/70" />}
+              <Th col="correct_outcomes" label="Resultados" className="text-right hidden md:table-cell" />
+              <Th col="total_predictions" label="Pronóst." className="text-right hidden lg:table-cell" />
             </tr>
           </thead>
           <tbody className="divide-y divide-union-blue/10">
-            {entries.map((entry) => {
+            {sorted.map((entry) => {
               const isCurrentUser = entry.user_id === currentUserId
               const clickable = !!tournamentId && entry.user_id !== currentUserId
               return (

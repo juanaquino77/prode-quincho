@@ -2,7 +2,7 @@ import { useState, createContext, useContext } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff, Ticket, Trophy, DollarSign } from 'lucide-react'
+import { Plus, Edit2, Trash2, Save, X, Users, Calendar, ShieldAlert, ClipboardList, Layers, Eye, EyeOff, Ticket, Trophy, DollarSign, ChevronUp, ChevronDown } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -1949,12 +1949,31 @@ function PaymentMethodBadge({ method, reason }: { method: AdminMember['payment_m
   return null
 }
 
+type MemberSortKey = 'username' | 'joined_at' | 'payment_amount' | 'paid' | 'prediction_count'
+
 function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTournament; onClose: () => void }) {
   const { data: members = [], isLoading } = useAdminTournamentMembers(tournament.id)
   const setMemberPaid = useAdminSetMemberPaid()
   const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
+  const [sortKey, setSortKey] = useState<MemberSortKey>('paid')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const filtered = filter === 'all' ? members : filter === 'paid' ? members.filter(m => m.paid) : members.filter(m => !m.paid)
+  function handleSort(key: MemberSortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir(key === 'username' ? 'asc' : 'desc') }
+  }
+
+  const baseFiltered = filter === 'all' ? members : filter === 'paid' ? members.filter(m => m.paid) : members.filter(m => !m.paid)
+  const filtered = [...baseFiltered].sort((a, b) => {
+    let diff = 0
+    if (sortKey === 'username') diff = (a.username ?? '').localeCompare(b.username ?? '')
+    else if (sortKey === 'joined_at') diff = a.joined_at.localeCompare(b.joined_at)
+    else if (sortKey === 'payment_amount') diff = (a.payment_amount ?? 0) - (b.payment_amount ?? 0)
+    else if (sortKey === 'paid') diff = (a.paid ? 1 : 0) - (b.paid ? 1 : 0)
+    else if (sortKey === 'prediction_count') diff = (a.prediction_count ?? 0) - (b.prediction_count ?? 0)
+    return sortDir === 'asc' ? diff : -diff
+  })
+
   const paidCount = members.filter(m => m.paid).length
 
   const totalCollected = members.filter(m => m.paid && m.payment_amount).reduce((sum, m) => sum + (m.payment_amount ?? 0), 0)
@@ -2002,12 +2021,30 @@ function TournamentMembersModal({ tournament, onClose }: { tournament: AdminTour
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-white/30 uppercase tracking-wider border-b border-union-blue/10">
-                <th className="text-left pb-2 font-semibold">Participante</th>
-                <th className="text-left pb-2 font-semibold">Ingresó</th>
-                <th className="text-left pb-2 font-semibold">Método</th>
-                <th className="text-right pb-2 font-semibold">Monto</th>
-                <th className="text-right pb-2 font-semibold">Estado</th>
+              <tr className="text-xs uppercase tracking-wider border-b border-union-blue/10">
+                {([
+                  { col: 'username' as MemberSortKey, label: 'Participante', align: 'left' },
+                  { col: 'joined_at' as MemberSortKey, label: 'Ingresó', align: 'left' },
+                  { col: null, label: 'Método', align: 'left' },
+                  { col: 'payment_amount' as MemberSortKey, label: 'Monto', align: 'right' },
+                  { col: 'paid' as MemberSortKey, label: 'Estado', align: 'right' },
+                ]).map(({ col, label, align }) => (
+                  <th
+                    key={label}
+                    onClick={col ? () => handleSort(col) : undefined}
+                    className={cn(
+                      `text-${align} pb-2 font-semibold transition-colors`,
+                      col ? 'cursor-pointer select-none hover:text-white' : '',
+                      col && sortKey === col ? 'text-white' : 'text-white/30',
+                    )}
+                  >
+                    {label}
+                    {col && (sortKey === col
+                      ? (sortDir === 'asc' ? <ChevronUp size={10} className="ml-0.5 inline" /> : <ChevronDown size={10} className="ml-0.5 inline" />)
+                      : <ChevronUp size={10} className="ml-0.5 inline opacity-20" />
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-union-blue/5">
