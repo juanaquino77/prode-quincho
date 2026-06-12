@@ -137,7 +137,7 @@ SET points_earned = public.calculate_points(
       COALESCE((t.rules->>'pts_penalty_wrong_deduct')::int,              1),
       COALESCE((t.rules->>'pts_penalty_wrong_deduct_draw_outcome')::int, 0),
       COALESCE((t.rules->>'requires_exact_score')::boolean,              true),
-      -- Verificar si este usuario tiene corazonada en este partido específico
+      -- Solo true si el usuario puso explícitamente corazonada en este partido
       EXISTS (
         SELECT 1 FROM public.corazonadas c
         WHERE c.match_id      = m.id
@@ -147,9 +147,10 @@ SET points_earned = public.calculate_points(
       COALESCE(t.pts_corazonada_bonus, 5)
     ),
     updated_at = now()
-FROM public.matches m
-JOIN public.tournaments t ON t.id = p.tournament_id
-WHERE p.match_id = m.id
+FROM public.matches m,
+     public.tournaments t
+WHERE p.match_id      = m.id
+  AND p.tournament_id = t.id
   AND m.status IN ('finished', 'live')
   AND m.home_score IS NOT NULL
   AND m.away_score IS NOT NULL;
