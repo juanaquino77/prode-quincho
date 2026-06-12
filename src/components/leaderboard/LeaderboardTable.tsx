@@ -97,6 +97,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                      <StreakIcon isHot={entry.is_hot} isCold={entry.is_cold} />
                       {entry.avatar_url ? (
                         <img src={entry.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
@@ -186,4 +187,28 @@ function RankIcon({ rank }: { rank: number }) {
   if (rank === 2) return <Medal size={18} className="text-gray-300" />
   if (rank === 3) return <Medal size={18} className="text-amber-600" />
   return <span className="text-sm font-medium text-white/40">{rank}</span>
+}
+
+function StreakIcon({ isHot, isCold }: { isHot?: boolean; isCold?: boolean }) {
+  if (!isHot && !isCold) return <span className="w-5" />
+
+  if (isHot) {
+    return (
+      <span
+        className="text-base leading-none animate-bounce cursor-default select-none"
+        title="🔥 ¡En racha! Acertó 2+ exactos recientes o lleva 3 partidos seguidos sumando puntos"
+      >
+        🔥
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="text-base leading-none animate-pulse cursor-default select-none"
+      title="❄️ Frío... Sin sumar puntos en los últimos 3 partidos"
+    >
+      ❄️
+    </span>
+  )
 }

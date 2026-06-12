@@ -176,6 +176,8 @@ export interface LeaderboardEntry {
   rank: number
   paid?: boolean
   free_pass?: boolean
+  is_hot?: boolean
+  is_cold?: boolean
 }
 
 export interface AuthUser {
