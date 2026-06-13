@@ -1,4 +1,4 @@
-import { useState, createContext, useContext } from 'react'
+import { useState, useRef, useEffect, createContext, useContext } from 'react'
 import { useForm, type Resolver, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -179,7 +179,7 @@ export default function Admin() {
           <Eye size={16} className="text-amber-400 shrink-0" />
           <div>
             <p className="text-sm font-semibold text-amber-300">Vista de organizador</p>
-            <p className="text-xs text-amber-400/60 mt-0.5">Podés gestionar pases libres y pagos del torneo global. El resto es solo lectura.</p>
+            <p className="text-xs text-amber-400/60 mt-0.5">Podés cargar y modificar resultados de partidos. La gestión de usuarios, tipos y torneos es solo lectura.</p>
           </div>
         </div>
       )}
@@ -229,6 +229,7 @@ function ResultsTab() {
   const [filterStage, setFilterStage] = useState<string>('group')
   const [filterGroup, setFilterGroup] = useState<string>('A')
   const [viewMode, setViewMode] = useState<'stage' | 'calendar'>('stage')
+  const liveRef = useRef<HTMLDivElement>(null)
 
   const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
   const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L']
@@ -236,6 +237,15 @@ function ResultsTab() {
   const allSorted = (matches ?? [])
     .slice()
     .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+
+  const liveMatches = allSorted.filter((m) => m.status === 'live')
+
+  // Auto-scroll to live section when there are live matches
+  useEffect(() => {
+    if (liveMatches.length === 0 || !liveRef.current) return
+    const timer = setTimeout(() => liveRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)
+    return () => clearTimeout(timer)
+  }, [liveMatches.length])
 
   const relevant = viewMode === 'stage'
     ? allSorted.filter((m) =>
@@ -312,6 +322,20 @@ function ResultsTab() {
 
   return (
     <div className="space-y-3">
+      {/* ── En vivo ahora ── */}
+      {liveMatches.length > 0 && (
+        <div ref={liveRef} className="mb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+            <h3 className="text-sm font-bold text-red-400">En vivo ahora</h3>
+          </div>
+          <div className="space-y-2">
+            {liveMatches.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
+          </div>
+          <div className="h-px bg-union-blue/15 my-4" />
+        </div>
+      )}
+
       {/* Toggle */}
       <div className="flex gap-1.5 p-1 bg-union-navy-light rounded-xl border border-union-blue/15 w-fit">
         {(['stage', 'calendar'] as const).map((mode) => (

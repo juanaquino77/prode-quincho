@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore'
 import { useMatches } from '../hooks/useMatches'
 import { useGlobalTournament, useUserTournaments, useLeaderboard } from '../hooks/useTournaments'
 import { useSpecialPredictions, } from '../hooks/useSpecialPredictions'
-import { usePredictionCompletion } from '../hooks/usePredictions'
+import { usePredictionCompletion, usePredictions } from '../hooks/usePredictions'
 import { useTournamentStore } from '../store/tournamentStore'
 import { formatShortDate, resolveMatches, cn } from '../lib/utils'
 import { ClubFlag } from '../components/ui/ClubFlag'
@@ -57,6 +57,8 @@ export default function Dashboard() {
 
   const hasLive = matches.some((m) => m.status === 'live')
   const { data: leaderboard } = useLeaderboard(activeTournamentId, hasLive)
+  const { data: myPredictions } = usePredictions(user?.id, activeTournamentId ?? '')
+  const predByMatchId = new Map((myPredictions ?? []).map((p) => [p.match_id, p]))
 
   const { total: predTotal, filled: predFilled, isComplete: predComplete, pct: predPct } =
     usePredictionCompletion(user?.id, activeTournamentId ?? '', activeTournament?.competition ?? null)
@@ -184,31 +186,42 @@ export default function Dashboard() {
                 <p className="text-white/40 text-sm">No hay partidos próximos</p>
               </Card>
             ) : (
-              (live.length > 0 ? live : upcoming).map((match) => (
-                <Card key={match.id} className={`overflow-hidden ${match.status === 'live' ? 'border-red-500/20' : ''}`}>
-                  <div className="flex items-center gap-2 w-full min-w-0">
-                    <MatchFlag flag={match.home_flag} teamName={match.home_team} size={24} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{match.home_team} vs {match.away_team}</p>
-                      <p className="text-xs text-white/40 truncate">{formatShortDate(match.match_date)}</p>
+              (live.length > 0 ? live : upcoming).map((match) => {
+                const myPred = predByMatchId.get(match.id)
+                return (
+                  <Card key={match.id} className={`overflow-hidden ${match.status === 'live' ? 'border-red-500/20' : ''}`}>
+                    <div className="flex items-center gap-2 w-full min-w-0">
+                      <MatchFlag flag={match.home_flag} teamName={match.home_team} size={24} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{match.home_team} vs {match.away_team}</p>
+                        <p className="text-xs text-white/40 truncate">{formatShortDate(match.match_date)}</p>
+                      </div>
+                      <MatchFlag flag={match.away_flag} teamName={match.away_team} size={24} />
+                      <div className="shrink-0 ml-1">
+                        {match.status === 'live' && match.home_score !== null && match.away_score !== null ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-base font-bold text-white tabular-nums">{match.home_score}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-base font-bold text-white tabular-nums">{match.away_score}</span>
+                          </div>
+                        ) : match.status === 'live' ? (
+                          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">En vivo</span>
+                        ) : (
+                          <Lock size={14} className="text-white/20" />
+                        )}
+                      </div>
                     </div>
-                    <MatchFlag flag={match.away_flag} teamName={match.away_team} size={24} />
-                    <div className="shrink-0 ml-1">
-                      {match.status === 'live' && match.home_score !== null && match.away_score !== null ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-base font-bold text-white tabular-nums">{match.home_score}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-base font-bold text-white tabular-nums">{match.away_score}</span>
-                        </div>
-                      ) : match.status === 'live' ? (
-                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">En vivo</span>
-                      ) : (
-                        <Lock size={14} className="text-white/20" />
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))
+                    {match.status === 'live' && myPred && myPred.home_score_pred !== null && myPred.away_score_pred !== null && (
+                      <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-[11px] text-white/40">Mi pronóstico</span>
+                        <span className="text-xs font-semibold text-union-blue tabular-nums">
+                          {myPred.home_score_pred} - {myPred.away_score_pred}
+                        </span>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })
             )}
           </div>
           <Link to="/predicciones">

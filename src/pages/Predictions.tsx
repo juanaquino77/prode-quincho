@@ -27,7 +27,7 @@ export default function Predictions() {
 
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
-  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>('groups')
+  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>(highlightMatchId ? 'groups' : 'calendar')
   const hasSyncedStage = useRef(false)
   const batchTournamentRef = useRef<string | undefined>(undefined)
 
@@ -360,6 +360,18 @@ export default function Predictions() {
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
   const showKnockoutBanner = !isGroupStageDone && resolvedStage !== 'group' && viewMode === 'groups'
 
+  // Auto-scroll to today in calendar view
+  useEffect(() => {
+    if (viewMode !== 'calendar') return
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-day-key="${todayKey}"]`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [viewMode])
+
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
   const calendarMatchesByDay = useMemo(() => {
     if (viewMode !== 'calendar') return []
@@ -600,7 +612,7 @@ export default function Predictions() {
           {calendarMatchesByDay.length === 0 ? (
             <div className="text-center py-12 text-white/40">No hay partidos</div>
           ) : calendarMatchesByDay.map((day) => (
-            <div key={day.dateKey} className="mb-8">
+            <div key={day.dateKey} data-day-key={day.dateKey} className="mb-8">
               <div className="flex items-center gap-3 mb-3">
                 <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
                 <div className="flex-1 h-px bg-union-blue/15" />
