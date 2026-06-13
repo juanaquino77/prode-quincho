@@ -27,7 +27,7 @@ export default function Predictions() {
 
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
-  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>(highlightMatchId ? 'groups' : 'calendar')
+  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>(searchParams.get('matchId') ? 'groups' : 'calendar')
   const hasSyncedStage = useRef(false)
   const batchTournamentRef = useRef<string | undefined>(undefined)
 
