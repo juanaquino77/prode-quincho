@@ -82,6 +82,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
             {sorted.map((entry) => {
               const isCurrentUser = entry.user_id === currentUserId
               const clickable = !!tournamentId && entry.user_id !== currentUserId
+              if (entry.is_cold || (entry.hot_level ?? 0) > 0) console.log('[streak]', entry.username, { hot_level: entry.hot_level, is_cold: entry.is_cold })
               return (
                 <tr
                   key={entry.user_id}
