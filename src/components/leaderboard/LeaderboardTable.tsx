@@ -216,7 +216,7 @@ function StreakIcon({ hotLevel, isCold }: { hotLevel: number; isCold: boolean })
     return (
       <span
         className="text-base leading-none animate-bounce cursor-default select-none shrink-0"
-        title="🔥 ¡En racha! Acertó al menos un resultado en los últimos 3 partidos"
+        title="🔥 ¡En racha! 2 o más puntos en los últimos 3 partidos"
       >
         🔥
       </span>

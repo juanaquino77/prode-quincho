@@ -57,7 +57,7 @@ RETURNS TABLE (
       CASE WHEN played >= 3 THEN
         CASE
           WHEN last3_points >= 7 THEN 2
-          WHEN last3_with_points >= 1 THEN 1
+          WHEN last3_points >= 2 THEN 1
           ELSE 0
         END
       ELSE 0 END AS hot_level,
