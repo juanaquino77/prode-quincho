@@ -87,5 +87,6 @@ RETURNS TABLE (
   WHERE tm.tournament_id = p_tournament_id
     AND tm.is_active = true
   GROUP BY pr.id, pr.username, pr.full_name, pr.avatar_url, tm.paid, pr.free_pass, si.is_hot, si.is_cold
-  ORDER BY total_points DESC, exact_scores DESC;
+  ORDER BY COALESCE(SUM(p.points_earned), 0) DESC,
+           COUNT(CASE WHEN p.points_earned >= 3 THEN 1 END) DESC;
 $$;
