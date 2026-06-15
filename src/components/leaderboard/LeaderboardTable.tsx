@@ -97,7 +97,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <StreakIcon hotLevel={entry.hot_level ?? 0} isCold={entry.is_cold ?? false} />
+                      <StreakIcon exactScores={entry.exact_scores} totalPoints={entry.total_points} totalPredictions={entry.total_predictions} />
                       {entry.avatar_url ? (
                         <img src={entry.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
@@ -189,39 +189,33 @@ function RankIcon({ rank }: { rank: number }) {
   return <span className="text-sm font-medium text-white/40">{rank}</span>
 }
 
-function StreakIcon({ hotLevel, isCold }: { hotLevel: number; isCold: boolean }) {
-  if (isCold) {
-    return (
-      <span
-        className="text-base leading-none animate-pulse cursor-default select-none shrink-0"
-        title="🧊 Frío... Sin sumar puntos en los últimos 3 partidos"
-      >
-        🧊
-      </span>
-    )
-  }
+function StreakIcon({ exactScores, totalPoints, totalPredictions }: {
+  exactScores: number
+  totalPoints: number
+  totalPredictions: number
+}) {
+  const isHot = exactScores >= 2
+  const isCold = totalPredictions > 0 && totalPoints === 0
 
-  if (hotLevel >= 2) {
+  if (!isHot && !isCold) return <span className="w-5 shrink-0" />
+
+  if (isHot) {
     return (
       <span
         className="text-base leading-none animate-bounce cursor-default select-none shrink-0"
-        title="🔥🔥 ¡En llamas! 7 o más puntos en los últimos 3 partidos"
-      >
-        🔥🔥
-      </span>
-    )
-  }
-
-  if (hotLevel === 1) {
-    return (
-      <span
-        className="text-base leading-none animate-bounce cursor-default select-none shrink-0"
-        title="🔥 ¡En racha! 2 o más puntos en los últimos 3 partidos"
+        title="🔥 ¡En racha! Acertó 2 o más resultados exactos"
       >
         🔥
       </span>
     )
   }
 
-  return <span className="w-5 shrink-0" />
+  return (
+    <span
+      className="text-base leading-none animate-pulse cursor-default select-none shrink-0"
+      title="❄️ Frío... Sin sumar puntos hasta ahora"
+    >
+      ❄️
+    </span>
+  )
 }
