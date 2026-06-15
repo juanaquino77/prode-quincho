@@ -97,7 +97,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <StreakIcon exactScores={entry.exact_scores} isCold={entry.is_cold ?? false} />
+                      <StreakIcon hotLevel={entry.hot_level ?? 0} isCold={entry.is_cold ?? false} />
                       {entry.avatar_url ? (
                         <img src={entry.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
@@ -189,19 +189,28 @@ function RankIcon({ rank }: { rank: number }) {
   return <span className="text-sm font-medium text-white/40">{rank}</span>
 }
 
-function StreakIcon({ exactScores, isCold }: {
-  exactScores: number
+function StreakIcon({ hotLevel, isCold }: {
+  hotLevel: number
   isCold: boolean
 }) {
-  const isHot = exactScores >= 2
+  if (!hotLevel && !isCold) return <span className="w-5 shrink-0" />
 
-  if (!isHot && !isCold) return <span className="w-5 shrink-0" />
-
-  if (isHot) {
+  if (hotLevel === 2) {
     return (
       <span
         className="text-base leading-none animate-bounce cursor-default select-none shrink-0"
-        title="🔥 ¡En racha! Acertó 2 o más resultados exactos"
+        title="🔥🔥 ¡Racha imparable! 7+ puntos en los últimos 3 partidos"
+      >
+        🔥🔥
+      </span>
+    )
+  }
+
+  if (hotLevel === 1) {
+    return (
+      <span
+        className="text-base leading-none animate-bounce cursor-default select-none shrink-0"
+        title="🔥 ¡En racha! 2+ puntos en los últimos 3 partidos"
       >
         🔥
       </span>
@@ -211,9 +220,9 @@ function StreakIcon({ exactScores, isCold }: {
   return (
     <span
       className="text-base leading-none animate-pulse cursor-default select-none shrink-0"
-      title="🧊 Frío... Sin sumar puntos en los últimos 3 partidos"
+      title="🥶 Frío... Sin sumar puntos en los últimos 3 partidos"
     >
-      🧊
+      🥶
     </span>
   )
 }

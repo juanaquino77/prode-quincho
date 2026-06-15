@@ -176,7 +176,7 @@ export interface LeaderboardEntry {
   rank: number
   paid?: boolean
   free_pass?: boolean
-  is_hot?: boolean
+  hot_level?: number
   is_cold?: boolean
 }
 
