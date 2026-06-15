@@ -74,7 +74,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
               <Th col="total_points" label="Pts" className="text-right" />
               <Th col="exact_scores" label="Exactos" className="text-right hidden sm:table-cell" />
               {hasCorazonada && <Th col="corazonadas_acertadas" label="💛 Coraz." className="text-right hidden sm:table-cell text-amber-400/70" />}
-              <Th col="correct_outcomes" label="Resultados" className="text-right hidden md:table-cell" />
+              <Th col="correct_outcomes" label="Resultados ✓" className="text-right hidden md:table-cell" />
               <Th col="total_predictions" label="Pronóst." className="text-right hidden lg:table-cell" />
             </tr>
           </thead>
