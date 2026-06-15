@@ -97,7 +97,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <StreakIcon exactScores={entry.exact_scores} totalPoints={entry.total_points} totalPredictions={entry.total_predictions} />
+                      <StreakIcon exactScores={entry.exact_scores} isCold={entry.is_cold ?? false} />
                       {entry.avatar_url ? (
                         <img src={entry.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
@@ -189,13 +189,11 @@ function RankIcon({ rank }: { rank: number }) {
   return <span className="text-sm font-medium text-white/40">{rank}</span>
 }
 
-function StreakIcon({ exactScores, totalPoints, totalPredictions }: {
+function StreakIcon({ exactScores, isCold }: {
   exactScores: number
-  totalPoints: number
-  totalPredictions: number
+  isCold: boolean
 }) {
   const isHot = exactScores >= 2
-  const isCold = totalPredictions > 0 && totalPoints === 0
 
   if (!isHot && !isCold) return <span className="w-5 shrink-0" />
 
@@ -213,9 +211,9 @@ function StreakIcon({ exactScores, totalPoints, totalPredictions }: {
   return (
     <span
       className="text-base leading-none animate-pulse cursor-default select-none shrink-0"
-      title="❄️ Frío... Sin sumar puntos hasta ahora"
+      title="🧊 Frío... Sin sumar puntos en los últimos 3 partidos"
     >
-      ❄️
+      🧊
     </span>
   )
 }
