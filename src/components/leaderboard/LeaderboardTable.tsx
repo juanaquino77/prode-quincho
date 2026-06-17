@@ -14,10 +14,11 @@ interface LeaderboardTableProps {
   competition?: string | null
   showRivalPredictions?: 'before' | 'after'
   hasCorazonada?: boolean
+  ptsCorazonadaBonus?: number
   hasSpecialPredictions?: boolean
 }
 
-export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions, hasCorazonada, hasSpecialPredictions }: LeaderboardTableProps) {
+export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId, competition, showRivalPredictions, hasCorazonada, ptsCorazonadaBonus, hasSpecialPredictions }: LeaderboardTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -176,6 +177,7 @@ export function LeaderboardTable({ entries, currentUserId, isAdmin, tournamentId
           isAdmin={isAdmin}
           showRivalPredictions={showRivalPredictions}
           hasCorazonada={hasCorazonada}
+          ptsCorazonadaBonus={ptsCorazonadaBonus}
           hasSpecialPredictions={hasSpecialPredictions}
         />
       )}

@@ -89,6 +89,7 @@ export default function Leaderboard() {
           competition={selectedTournament?.competition}
           showRivalPredictions={selectedTournament?.show_rival_predictions}
           hasCorazonada={selectedTournament?.has_corazonada ?? false}
+          ptsCorazonadaBonus={selectedTournament?.pts_corazonada_bonus ?? 5}
           hasSpecialPredictions={selectedTournament?.has_special_predictions ?? false}
         />
       )}

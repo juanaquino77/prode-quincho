@@ -19,10 +19,11 @@ interface Props {
   isAdmin?: boolean
   showRivalPredictions?: 'before' | 'after'
   hasCorazonada?: boolean
+  ptsCorazonadaBonus?: number
   hasSpecialPredictions?: boolean
 }
 
-export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin, showRivalPredictions = 'after', hasCorazonada, hasSpecialPredictions }: Props) {
+export function UserPredictionsModal({ open, onClose, entry, tournamentId, competition, isAdmin, showRivalPredictions = 'after', hasCorazonada, ptsCorazonadaBonus = 5, hasSpecialPredictions }: Props) {
   const { data: matches } = useMatches(competition ?? undefined)
   const { data: predictions, isLoading } = usePredictions(entry?.user_id, tournamentId)
   const { data: corazonadas = [] } = useCorazonadas(
@@ -120,6 +121,10 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
                     ? calcPoints(match, pred.home_score_pred, pred.away_score_pred, pred.penalty_pred)
                     : null
                   const isCorazonada = corazonadaMatchIds.has(match.id)
+                  // Con corazonada exacta, pts_corazonada_bonus reemplaza (no suma) el puntaje exacto
+                  const displayPts = pts !== null && isCorazonada && pts >= 3
+                    ? ptsCorazonadaBonus
+                    : pts
 
                   return (
                     <div
@@ -186,14 +191,14 @@ export function UserPredictionsModal({ open, onClose, entry, tournamentId, compe
 
                       {/* Points pill */}
                       <div className="w-12 text-right shrink-0">
-                        {pts !== null ? (
+                        {displayPts !== null ? (
                           <span className={cn(
                             'text-[10px] font-bold px-1.5 py-0.5 rounded',
-                            pts >= 3 ? 'bg-yellow-500/20 text-yellow-400'
-                            : pts > 0 ? 'bg-green-500/20 text-green-400'
+                            displayPts >= 3 ? 'bg-yellow-500/20 text-yellow-400'
+                            : displayPts > 0 ? 'bg-green-500/20 text-green-400'
                             : 'bg-white/5 text-white/30'
                           )}>
-                            {pts > 0 ? `+${pts}` : '0'} pts
+                            {displayPts > 0 ? `+${displayPts}` : '0'} pts
                           </span>
                         ) : finished ? (
                           <span className="text-[10px] text-white/20">–</span>
