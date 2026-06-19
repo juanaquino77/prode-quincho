@@ -361,26 +361,6 @@ export default function Predictions() {
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
   const showKnockoutBanner = !isGroupStageDone && resolvedStage !== 'group' && viewMode === 'groups'
 
-  // Auto-scroll al partido en vivo (o al día de hoy) en vista calendario.
-  // Corre cuando llegan los datos; solo una vez por montaje del componente.
-  useEffect(() => {
-    if (viewMode !== 'calendar' || calendarMatchesByDay.length === 0) return
-    if (hasScrolledToLive.current) return
-    hasScrolledToLive.current = true
-
-    const liveDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'live'))
-    const upcomingDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'upcoming'))
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
-    const targetKey = liveDay?.dateKey ?? upcomingDay?.dateKey ?? todayKey
-
-    const timer = setTimeout(() => {
-      const el = document.querySelector(`[data-day-key="${targetKey}"]`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [calendarMatchesByDay, viewMode])
-
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
   const calendarMatchesByDay = useMemo(() => {
     if (viewMode !== 'calendar') return []
@@ -405,6 +385,26 @@ export default function Predictions() {
     }
     return days
   }, [matches, viewMode])
+
+  // Auto-scroll al partido en vivo (o al día de hoy) en vista calendario.
+  // Corre cuando llegan los datos; solo una vez por montaje del componente.
+  useEffect(() => {
+    if (viewMode !== 'calendar' || calendarMatchesByDay.length === 0) return
+    if (hasScrolledToLive.current) return
+    hasScrolledToLive.current = true
+
+    const liveDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'live'))
+    const upcomingDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'upcoming'))
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+    const targetKey = liveDay?.dateKey ?? upcomingDay?.dateKey ?? todayKey
+
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-day-key="${targetKey}"]`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [calendarMatchesByDay, viewMode])
 
   function switchTournament(t: Tournament) {
     setSelectedTournamentId(t.id)
