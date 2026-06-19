@@ -25,7 +25,7 @@ button, [role="button"], select, label[for] {
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -35,12 +35,12 @@ body {
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 #root {
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 input[type=number]::-webkit-inner-spin-button,

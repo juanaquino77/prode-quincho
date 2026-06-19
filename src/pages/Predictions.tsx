@@ -27,8 +27,9 @@ export default function Predictions() {
 
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
-  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>(searchParams.get('matchId') ? 'groups' : 'calendar')
+  const [viewMode, setViewMode] = useState<'groups' | 'calendar'>('calendar')
   const hasSyncedStage = useRef(false)
+  const hasScrolledToLive = useRef(false)
   const batchTournamentRef = useRef<string | undefined>(undefined)
 
   const allTournaments = useMemo<Tournament[]>(() => {
@@ -360,17 +361,25 @@ export default function Predictions() {
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
   const showKnockoutBanner = !isGroupStageDone && resolvedStage !== 'group' && viewMode === 'groups'
 
-  // Auto-scroll to today in calendar view
+  // Auto-scroll al partido en vivo (o al día de hoy) en vista calendario.
+  // Corre cuando llegan los datos; solo una vez por montaje del componente.
   useEffect(() => {
-    if (viewMode !== 'calendar') return
+    if (viewMode !== 'calendar' || calendarMatchesByDay.length === 0) return
+    if (hasScrolledToLive.current) return
+    hasScrolledToLive.current = true
+
+    const liveDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'live'))
+    const upcomingDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'upcoming'))
     const today = new Date()
     const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+    const targetKey = liveDay?.dateKey ?? upcomingDay?.dateKey ?? todayKey
+
     const timer = setTimeout(() => {
-      const el = document.querySelector(`[data-day-key="${todayKey}"]`)
+      const el = document.querySelector(`[data-day-key="${targetKey}"]`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 150)
+    }, 200)
     return () => clearTimeout(timer)
-  }, [viewMode])
+  }, [calendarMatchesByDay, viewMode])
 
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
   const calendarMatchesByDay = useMemo(() => {
