@@ -101,7 +101,7 @@ function BracketMatch({ match, prediction, tournamentId }: {
   }
 
   // Navegable si los equipos ya son conocidos (no siguen siendo placeholders)
-  const isPlaceholder = (t: string) => t.startsWith('Gan.') || /^[12][A-L]$/.test(t) || t.startsWith('Mejor 3')
+  const isPlaceholder = (t: string) => t.startsWith('Gan.') || /^[12][A-L]$/.test(t) || t.startsWith('Mejor 3') || t.startsWith('Perdedor') || t.includes(' o ')
   const teamsResolved = !isPlaceholder(match.home_team) && !isPlaceholder(match.away_team)
   const isNavigable = !!tournamentId && teamsResolved
 

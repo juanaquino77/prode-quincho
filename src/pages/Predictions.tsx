@@ -391,6 +391,7 @@ export default function Predictions() {
   useEffect(() => {
     if (viewMode !== 'calendar' || calendarMatchesByDay.length === 0) return
     if (hasScrolledToLive.current) return
+    if (highlightMatchId) return
     hasScrolledToLive.current = true
 
     const liveDay = calendarMatchesByDay.find((d) => d.matches.some((m) => m.status === 'live'))
