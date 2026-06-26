@@ -99,7 +99,8 @@ function BracketMatch({ match, prediction, tournamentId }: {
   }
 
   // Navegable si los equipos ya son conocidos (no siguen siendo placeholders)
-  const teamsResolved = !match.home_team.startsWith('Gan.') && !match.away_team.startsWith('Gan.')
+  const isPlaceholder = (t: string) => t.startsWith('Gan.') || /^[12][A-L]$/.test(t) || t.startsWith('Mejor 3')
+  const teamsResolved = !isPlaceholder(match.home_team) && !isPlaceholder(match.away_team)
   const isNavigable = !!tournamentId && teamsResolved
 
   function handleClick() {
@@ -169,6 +170,7 @@ export default function Bracket() {
     const byStage: Partial<Record<MatchStage, Match[]>> = {}
     for (const stage of KNOCKOUT_STAGES) {
       const ms = matches.filter((m) => m.stage === stage)
+        .sort((a, b) => (a.match_number ?? 0) - (b.match_number ?? 0))
       if (ms.length > 0) byStage[stage] = ms
     }
     return byStage
