@@ -309,14 +309,19 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
                     onChange={(e) => {
                       const v = e.target.value.replace(/\D/g, '').slice(0, 1)
                       handleHomeChange(v)
-                      if (v !== '' && batchMode) {
-                        if (away === '') {
+                      if (v !== '') {
+                        if (batchMode) {
+                          if (away === '') {
+                            awayRef.current?.focus()
+                            awayRef.current?.select()
+                          } else {
+                            const allHomes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-batch-input="home"]:not(:disabled)'))
+                            const next = allHomes[allHomes.indexOf(homeRef.current!) + 1]
+                            if (next) { next.focus(); next.select() }
+                          }
+                        } else {
                           awayRef.current?.focus()
                           awayRef.current?.select()
-                        } else {
-                          const allHomes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-batch-input="home"]:not(:disabled)'))
-                          const next = allHomes[allHomes.indexOf(homeRef.current!) + 1]
-                          if (next) { next.focus(); next.select() }
                         }
                       }
                     }}

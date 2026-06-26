@@ -19,14 +19,16 @@ const ROW_H = 112
 
 // ─── Single team row inside a bracket card ───────────────────
 function TeamRow({
-  name, score, predScore, isPredWinner, isActualWinner,
+  name, flag, score, predScore, isPredWinner, isActualWinner,
 }: {
   name: string
+  flag?: string | null
   score: number | null
   predScore: number | null
   isPredWinner: boolean
   isActualWinner: boolean
 }) {
+  const isEmoji = flag && !flag.startsWith('http')
   const hasPred = predScore !== null
   const finished = score !== null
 
@@ -36,8 +38,8 @@ function TeamRow({
         ? 'bg-union-blue/20 border border-union-blue/40'
         : 'bg-union-navy-light border border-transparent'
     }`}>
-      <div className="flex-shrink-0">
-        <ClubFlag teamName={name} size={22} />
+      <div className="flex-shrink-0 w-6 text-center leading-none">
+        {isEmoji ? <span className="text-base">{flag}</span> : <ClubFlag teamName={name} size={22} />}
       </div>
       <span className={`text-xs font-semibold flex-1 truncate ${
         finished && isActualWinner ? 'text-white' : 'text-white/70'
@@ -122,8 +124,8 @@ function BracketMatch({ match, prediction, tournamentId }: {
         )}
       </div>
       <div className="p-1.5 space-y-1">
-        <TeamRow name={match.home_team} score={match.home_score} predScore={predHomeScore} isPredWinner={isPredHomeWinner} isActualWinner={homeWins} />
-        <TeamRow name={match.away_team} score={match.away_score} predScore={predAwayScore} isPredWinner={isPredAwayWinner} isActualWinner={awayWins} />
+        <TeamRow name={match.home_team} flag={match.home_flag} score={match.home_score} predScore={predHomeScore} isPredWinner={isPredHomeWinner} isActualWinner={homeWins} />
+        <TeamRow name={match.away_team} flag={match.away_flag} score={match.away_score} predScore={predAwayScore} isPredWinner={isPredAwayWinner} isActualWinner={awayWins} />
       </div>
       {!finished && teamsResolved && (
         <div className="px-3 pb-2 text-[10px] text-white/25 text-center">{formatShortDate(match.match_date)}</div>
