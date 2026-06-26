@@ -30,7 +30,7 @@ const SECTIONS = [
     title: 'Corazonada',
     items: [
       'Fase de grupos: elegís 1 partido de cada grupo como tu Corazonada. Si acertás el marcador exacto, el partido vale 5 pts totales (en lugar de 3).',
-      'Eliminatorias: en 16avos y cuartos de final también podés elegir 1 Corazonada por fase. Las semis y la final no tienen Corazonada.',
+      'Eliminatorias: en la Ronda de 32, 8vos y cuartos de final también podés elegir 1 Corazonada por fase. Las semis y la final no tienen Corazonada.',
       'En partidos de eliminatorias que terminan en empate: si acertás el exacto del empate, los penales suman o restan 1 pt como cualquier otro resultado exacto de empate.',
       'La Corazonada no da bonus si solo acertás el ganador sin el marcador exacto.',
     ],

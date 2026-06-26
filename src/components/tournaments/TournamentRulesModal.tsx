@@ -140,7 +140,7 @@ export function TournamentRulesModal({ open, onClose, tournament }: Props) {
           </div>
           <div className="flex gap-2">
             <span className="text-amber-400 shrink-0">2.</span>
-            <p><span className="text-white font-medium">Fase eliminatoria:</span> una vez definidos los 32 clasificados, se habilitan los pronósticos de eliminatorias (16avos, cuartos, semis y final).</p>
+            <p><span className="text-white font-medium">Fase eliminatoria:</span> una vez definidos los 32 clasificados, se habilitan los pronósticos de eliminatorias (Ronda de 32, 8vos, cuartos, semis y final).</p>
           </div>
           <div className="flex gap-2">
             <span className="text-amber-400 shrink-0">⏰</span>
