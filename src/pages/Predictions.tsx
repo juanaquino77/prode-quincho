@@ -635,7 +635,7 @@ export default function Predictions() {
                     prediction={predMap.get(match.id)}
                     tournamentId={selectedTournament!.id}
                     userId={user!.id}
-                    phaseLocked={match.stage !== 'group' && (['Gan.', 'Mejor 3'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team))}
+                    phaseLocked={match.stage !== 'group' && (['Gan.', 'Mejor 3'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team) || match.home_team.includes(' o ') || match.away_team.includes(' o '))}
                     phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
                     lockAt={roundLockTimes.get(match.id)}
                     highlighted={match.id === highlightMatchId}
@@ -712,7 +712,7 @@ export default function Predictions() {
               prediction={predMap.get(match.id)}
               tournamentId={selectedTournament!.id}
               userId={user!.id}
-              phaseLocked={['Gan.', 'Mejor 3'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team)}
+              phaseLocked={['Gan.', 'Mejor 3'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team) || match.home_team.includes(' o ') || match.away_team.includes(' o ')}
               phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
               lockAt={roundLockTimes.get(match.id)}
               highlighted={match.id === highlightMatchId}
