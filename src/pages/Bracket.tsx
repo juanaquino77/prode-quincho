@@ -14,6 +14,9 @@ const KNOCKOUT_STAGES: MatchStage[] = [
   'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
 ]
 
+// Visual order for R32: pairs that meet in the same R16 match must be adjacent
+const ROUND_OF_32_ORDER = [74, 77, 73, 75, 83, 84, 81, 82, 76, 78, 79, 80, 86, 87, 85, 88]
+
 // Altura fija por fila del grid (px). Debe ser >= altura de una BracketMatch card.
 const ROW_H = 112
 
@@ -172,7 +175,14 @@ export default function Bracket() {
     const byStage: Partial<Record<MatchStage, Match[]>> = {}
     for (const stage of KNOCKOUT_STAGES) {
       const ms = matches.filter((m) => m.stage === stage)
-        .sort((a, b) => (a.match_number ?? 0) - (b.match_number ?? 0))
+        .sort((a, b) => {
+          if (stage === 'round_of_32') {
+            const ai = ROUND_OF_32_ORDER.indexOf(a.match_number ?? 0)
+            const bi = ROUND_OF_32_ORDER.indexOf(b.match_number ?? 0)
+            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+          }
+          return (a.match_number ?? 0) - (b.match_number ?? 0)
+        })
       if (ms.length > 0) byStage[stage] = ms
     }
     return byStage
