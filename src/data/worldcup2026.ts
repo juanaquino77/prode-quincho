@@ -113,23 +113,23 @@ export const GROUP_STAGE_MATCHES: MatchSeed[] = [
 ]
 
 export const KNOCKOUT_PLACEHOLDER_MATCHES: MatchSeed[] = [
-  // DIECISEISAVOS DE FINAL — Jun 28 - Jul 3
-  { match_number: 73, stage: 'round_of_32', group_name: null, home_team: 'Sudáfrica', away_team: 'Canadá', home_flag: '🇿🇦', away_flag: '🇨🇦', match_date: '2026-06-28T20:00:00-07:00', venue: 'SoFi Stadium, Los Ángeles' },
-  { match_number: 74, stage: 'round_of_32', group_name: null, home_team: 'Alemania', away_team: 'Paraguay', home_flag: '🇩🇪', away_flag: '🇵🇾', match_date: '2026-06-29T21:30:00-04:00', venue: 'Gillette Stadium, Foxborough' },
-  { match_number: 75, stage: 'round_of_32', group_name: null, home_team: 'Países Bajos', away_team: 'Marruecos', home_flag: '🇳🇱', away_flag: '🇲🇦', match_date: '2026-06-30T02:00:00-05:00', venue: 'Estadio Akron, Guadalajara' },
-  { match_number: 76, stage: 'round_of_32', group_name: null, home_team: 'Brasil', away_team: 'Japón', home_flag: '🇧🇷', away_flag: '🇯🇵', match_date: '2026-06-29T18:00:00-05:00', venue: 'NRG Stadium, Houston' },
-  { match_number: 77, stage: 'round_of_32', group_name: null, home_team: 'Francia', away_team: 'Suecia', home_flag: '🇫🇷', away_flag: '🇸🇪', match_date: '2026-06-30T22:00:00-04:00', venue: 'MetLife Stadium, Nueva York' },
-  { match_number: 78, stage: 'round_of_32', group_name: null, home_team: 'Costa de Marfil', away_team: 'Noruega', home_flag: '🇨🇮', away_flag: '🇳🇴', match_date: '2026-06-30T18:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
-  { match_number: 79, stage: 'round_of_32', group_name: null, home_team: 'México', away_team: 'Mejor 3°(C/E/F/H/I)', home_flag: '🇲🇽', away_flag: '🏆', match_date: '2026-07-01T02:00:00-05:00', venue: 'Estadio Azteca, Ciudad de México' },
-  { match_number: 80, stage: 'round_of_32', group_name: null, home_team: 'Inglaterra', away_team: 'Mejor 3°(E/H/I/J/K)', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', away_flag: '🏆', match_date: '2026-07-01T17:00:00-04:00', venue: 'Mercedes-Benz Stadium, Atlanta' },
-  { match_number: 81, stage: 'round_of_32', group_name: null, home_team: 'Estados Unidos', away_team: 'Bosnia y Herzegovina', home_flag: '🇺🇸', away_flag: '🇧🇦', match_date: '2026-07-02T01:00:00-07:00', venue: 'Levi\'s Stadium, Santa Clara' },
-  { match_number: 82, stage: 'round_of_32', group_name: null, home_team: 'Bélgica', away_team: 'Mejor 3°(A/E/H/I/J)', home_flag: '🇧🇪', away_flag: '🏆', match_date: '2026-07-01T21:00:00-07:00', venue: 'Lumen Field, Seattle' },
-  { match_number: 83, stage: 'round_of_32', group_name: null, home_team: 'Portugal', away_team: 'Ghana', home_flag: '🇵🇹', away_flag: '🇬🇭', match_date: '2026-07-02T20:00:00-04:00', venue: 'BMO Field, Toronto' },
-  { match_number: 84, stage: 'round_of_32', group_name: null, home_team: 'España', away_team: 'Austria', home_flag: '🇪🇸', away_flag: '🇦🇹', match_date: '2026-07-02T20:00:00-07:00', venue: 'SoFi Stadium, Los Ángeles' },
-  { match_number: 85, stage: 'round_of_32', group_name: null, home_team: 'Suiza', away_team: 'Mejor 3°(E/F/G/I/J)', home_flag: '🇨🇭', away_flag: '🏆', match_date: '2026-07-03T00:00:00-07:00', venue: 'BC Place, Vancouver' },
-  { match_number: 86, stage: 'round_of_32', group_name: null, home_team: 'Argentina', away_team: 'Cabo Verde', home_flag: '🇦🇷', away_flag: '🇨🇻', match_date: '2026-07-03T23:00:00-04:00', venue: 'Hard Rock Stadium, Miami' },
-  { match_number: 87, stage: 'round_of_32', group_name: null, home_team: 'Australia', away_team: 'Egipto', home_flag: '🇦🇺', away_flag: '🇪🇬', match_date: '2026-07-03T19:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
-  { match_number: 88, stage: 'round_of_32', group_name: null, home_team: 'Colombia', away_team: 'Mejor 3°(D/E/I/J/L)', home_flag: '🇨🇴', away_flag: '🏆', match_date: '2026-07-04T02:30:00-05:00', venue: 'Arrowhead Stadium, Kansas City' },
+  // DIECISEISAVOS DE FINAL — Jun 28 - Jul 3 (horarios en Argentina, UTC-3)
+  { match_number: 73, stage: 'round_of_32', group_name: null, home_team: 'Sudáfrica', away_team: 'Canadá', home_flag: '🇿🇦', away_flag: '🇨🇦', match_date: '2026-06-28T16:00:00-03:00', venue: 'SoFi Stadium, Los Ángeles' },
+  { match_number: 74, stage: 'round_of_32', group_name: null, home_team: 'Alemania', away_team: 'Paraguay', home_flag: '🇩🇪', away_flag: '🇵🇾', match_date: '2026-06-29T17:30:00-03:00', venue: 'Gillette Stadium, Foxborough' },
+  { match_number: 75, stage: 'round_of_32', group_name: null, home_team: 'Países Bajos', away_team: 'Marruecos', home_flag: '🇳🇱', away_flag: '🇲🇦', match_date: '2026-06-29T22:00:00-03:00', venue: 'Estadio BBVA, Monterrey' },
+  { match_number: 76, stage: 'round_of_32', group_name: null, home_team: 'Brasil', away_team: 'Japón', home_flag: '🇧🇷', away_flag: '🇯🇵', match_date: '2026-06-29T14:00:00-03:00', venue: 'NRG Stadium, Houston' },
+  { match_number: 77, stage: 'round_of_32', group_name: null, home_team: 'Francia', away_team: 'Suecia', home_flag: '🇫🇷', away_flag: '🇸🇪', match_date: '2026-06-30T18:00:00-03:00', venue: 'MetLife Stadium, Nueva York' },
+  { match_number: 78, stage: 'round_of_32', group_name: null, home_team: 'Costa de Marfil', away_team: 'Noruega', home_flag: '🇨🇮', away_flag: '🇳🇴', match_date: '2026-06-30T14:00:00-03:00', venue: 'AT&T Stadium, Dallas' },
+  { match_number: 79, stage: 'round_of_32', group_name: null, home_team: 'México', away_team: 'Mejor 3°(C/E/F/H/I)', home_flag: '🇲🇽', away_flag: '🏆', match_date: '2026-06-30T22:00:00-03:00', venue: 'Estadio Azteca, Ciudad de México' },
+  { match_number: 80, stage: 'round_of_32', group_name: null, home_team: 'Inglaterra', away_team: 'Mejor 3°(E/H/I/J/K)', home_flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', away_flag: '🏆', match_date: '2026-07-01T18:00:00-03:00', venue: 'Mercedes-Benz Stadium, Atlanta' },
+  { match_number: 81, stage: 'round_of_32', group_name: null, home_team: 'Estados Unidos', away_team: 'Bosnia y Herzegovina', home_flag: '🇺🇸', away_flag: '🇧🇦', match_date: '2026-07-01T21:00:00-03:00', venue: 'Levi\'s Stadium, Santa Clara' },
+  { match_number: 82, stage: 'round_of_32', group_name: null, home_team: 'Bélgica', away_team: 'Mejor 3°(A/E/H/I/J)', home_flag: '🇧🇪', away_flag: '🏆', match_date: '2026-07-01T17:00:00-03:00', venue: 'Lumen Field, Seattle' },
+  { match_number: 83, stage: 'round_of_32', group_name: null, home_team: 'Portugal', away_team: 'Ghana', home_flag: '🇵🇹', away_flag: '🇬🇭', match_date: '2026-07-02T20:00:00-03:00', venue: 'BMO Field, Toronto' },
+  { match_number: 84, stage: 'round_of_32', group_name: null, home_team: 'España', away_team: 'Austria', home_flag: '🇪🇸', away_flag: '🇦🇹', match_date: '2026-07-02T16:00:00-03:00', venue: 'SoFi Stadium, Los Ángeles' },
+  { match_number: 85, stage: 'round_of_32', group_name: null, home_team: 'Suiza', away_team: 'Mejor 3°(E/F/G/I/J)', home_flag: '🇨🇭', away_flag: '🏆', match_date: '2026-07-03T00:00:00-03:00', venue: 'BC Place, Vancouver' },
+  { match_number: 86, stage: 'round_of_32', group_name: null, home_team: 'Argentina', away_team: 'Cabo Verde', home_flag: '🇦🇷', away_flag: '🇨🇻', match_date: '2026-07-03T19:00:00-03:00', venue: 'Hard Rock Stadium, Miami' },
+  { match_number: 87, stage: 'round_of_32', group_name: null, home_team: 'Australia', away_team: 'Egipto', home_flag: '🇦🇺', away_flag: '🇪🇬', match_date: '2026-07-03T15:00:00-03:00', venue: 'AT&T Stadium, Dallas' },
+  { match_number: 88, stage: 'round_of_32', group_name: null, home_team: 'Colombia', away_team: 'Mejor 3°(D/E/I/J/L)', home_flag: '🇨🇴', away_flag: '🏆', match_date: '2026-07-03T22:30:00-03:00', venue: 'Arrowhead Stadium, Kansas City' },
 
   // OCTAVOS DE FINAL
   { match_number: 89, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-1', away_team: 'Ganador R32-2', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T14:00:00-05:00', venue: 'SoFi Stadium, Los Ángeles' },
