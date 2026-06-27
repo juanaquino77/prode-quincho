@@ -6,8 +6,8 @@ interface Props {
 }
 
 const ROWS = [
-  { caso: 'Victoria en 90\' o tiempo suplementario — ganador acertado', pts: '+1 pt' },
-  { caso: 'Victoria en 90\' o tiempo suplementario — marcador exacto', pts: '+3 pts' },
+  { caso: 'Victoria en 90\' o en 90\' + tiempo suplementario — ganador acertado', pts: '+1 pt' },
+  { caso: 'Victoria en 90\' o en 90\' + tiempo suplementario — marcador exacto', pts: '+3 pts' },
   { caso: 'Empate exacto + acertás quién gana en penales', pts: '4 pts' },
   { caso: 'Empate exacto + errás quién gana en penales', pts: '2 pts' },
   { caso: 'Empate (no exacto) + acertás quién gana en penales', pts: '2 pts' },
@@ -33,7 +33,7 @@ export function KnockoutRulesModal({ onAck, onDismiss }: Props) {
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
           <p className="text-[11px] text-white/50 leading-relaxed">
-            El resultado final es el marcador al término de los 90' + tiempo suplementario. Los penales solo suman o restan 1 punto adicional.
+            El resultado final es el marcador al término de los 90' + tiempo suplementario.
           </p>
 
           <div className="rounded-xl overflow-hidden border border-union-blue/15 text-xs">
