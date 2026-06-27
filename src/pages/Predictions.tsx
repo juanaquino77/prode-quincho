@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle, Save } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
+import { KnockoutRulesModal } from '../components/matches/KnockoutRulesModal'
 import { Button } from '../components/ui/Button'
 import { SpecialPredictionsCard } from '../components/predictions/SpecialPredictionsCard'
 import { useMatches } from '../hooks/useMatches'
@@ -28,6 +29,14 @@ export default function Predictions() {
   const [activeStage, setActiveStage] = useState<MatchStage>('group')
   const [activeGroup, setActiveGroup] = useState<string>('A')
   const [viewMode, setViewMode] = useState<'groups' | 'calendar'>('calendar')
+  const [knockoutRulesOpen, setKnockoutRulesOpen] = useState(false)
+
+  const knockoutAckKey = user ? `knockout_rules_ack_${user.id}` : null
+  const handleKnockoutAfterSave = useCallback(() => {
+    if (!knockoutAckKey) return
+    if (localStorage.getItem(knockoutAckKey) === 'true') return
+    setKnockoutRulesOpen(true)
+  }, [knockoutAckKey])
   const hasSyncedStage = useRef(false)
   const hasScrolledToLive = useRef(false)
   const batchTournamentRef = useRef<string | undefined>(undefined)
@@ -570,17 +579,14 @@ export default function Predictions() {
         </div>
       )}
 
-      {/* Banner: etapa eliminatoria no disponible aún */}
-      {showKnockoutBanner && (
-        <div className="mb-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
-          <span className="text-amber-400 text-base shrink-0 mt-0.5">⏳</span>
-          <div>
-            <p className="text-sm font-semibold text-amber-300">Carga de pronósticos no disponible aún</p>
-            <p className="text-xs text-amber-400/70 mt-0.5 leading-relaxed">
-              Podrás cargar tus pronósticos para esta etapa una vez que estén definidos los rivales de la Ronda de 32, al finalizar la fase de grupos.
-            </p>
-          </div>
-        </div>
+      {knockoutRulesOpen && (
+        <KnockoutRulesModal
+          onAck={() => {
+            if (knockoutAckKey) localStorage.setItem(knockoutAckKey, 'true')
+            setKnockoutRulesOpen(false)
+          }}
+          onDismiss={() => setKnockoutRulesOpen(false)}
+        />
       )}
 
       {/* Group tabs */}
@@ -713,6 +719,7 @@ export default function Predictions() {
               prediction={predMap.get(match.id)}
               tournamentId={selectedTournament!.id}
               userId={user!.id}
+              onAfterSave={handleKnockoutAfterSave}
               phaseLocked={['Gan.', 'Mejor 3', 'Perdedor'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team) || match.home_team.includes(' o ') || match.away_team.includes(' o ')}
               phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
               lockAt={roundLockTimes.get(match.id)}

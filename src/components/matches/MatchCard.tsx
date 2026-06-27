@@ -29,6 +29,7 @@ interface MatchCardProps {
   /** Modo batch: sin botón individual; inputs siempre editables; notifica cambios al padre */
   batchMode?: boolean
   onBatchChange?: (matchId: string, home: string, away: string, penalty: PenaltyWinner | null) => void
+  onAfterSave?: () => void
   // Corazonada
   isCorazonada?: boolean       // este partido ES la corazonada del grupo
   corazonadaEnabled?: boolean  // el torneo tiene corazonadas activas
@@ -73,7 +74,7 @@ function decodeOutcome(h: number, a: number): Outcome1X2 {
   return 'draw'
 }
 
-export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, ptsCorazonadaBonus = 5, onAddCorazonada, onRemoveCorazonada }: MatchCardProps) {
+export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked, phaseUnlockAt, highlighted, lockAt, requiresExactScore = true, rules, batchMode = false, onBatchChange, onAfterSave, isCorazonada = false, corazonadaEnabled = false, corazonadaLocked = false, ptsCorazonadaBonus = 5, onAddCorazonada, onRemoveCorazonada }: MatchCardProps) {
   const locked = isMatchLocked(match, lockAt)
   const upsert = useUpsertPrediction()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -168,6 +169,7 @@ export function MatchCard({ match, prediction, tournamentId, userId, phaseLocked
     setSaved(true)
     setIsEditing(false)
     setTimeout(() => setSaved(false), 2000)
+    onAfterSave?.()
   }
 
   async function handleSave() {
