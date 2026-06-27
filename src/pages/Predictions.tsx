@@ -368,7 +368,7 @@ export default function Predictions() {
 
   const showStageTabs = availableStages.length > 1 && viewMode === 'groups'
   const showGroupTabs = resolvedStage === 'group' && viewMode === 'groups'
-  const showKnockoutBanner = !isGroupStageDone && resolvedStage !== 'group' && viewMode === 'groups'
+
 
   // Vista calendario: todos los partidos ordenados por fecha, agrupados por día
   const calendarMatchesByDay = useMemo(() => {
