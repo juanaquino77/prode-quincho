@@ -128,8 +128,8 @@ export const KNOCKOUT_PLACEHOLDER_MATCHES: MatchSeed[] = [
   { match_number: 84, stage: 'round_of_32', group_name: null, home_team: 'España', away_team: 'Austria', home_flag: '🇪🇸', away_flag: '🇦🇹', match_date: '2026-07-02T20:00:00-07:00', venue: 'SoFi Stadium, Los Ángeles' },
   { match_number: 85, stage: 'round_of_32', group_name: null, home_team: 'Suiza', away_team: 'Mejor 3°(E/F/G/I/J)', home_flag: '🇨🇭', away_flag: '🏆', match_date: '2026-07-03T00:00:00-07:00', venue: 'BC Place, Vancouver' },
   { match_number: 86, stage: 'round_of_32', group_name: null, home_team: 'Argentina', away_team: 'Cabo Verde', home_flag: '🇦🇷', away_flag: '🇨🇻', match_date: '2026-07-03T23:00:00-04:00', venue: 'Hard Rock Stadium, Miami' },
-  { match_number: 87, stage: 'round_of_32', group_name: null, home_team: 'Colombia', away_team: 'Mejor 3°(D/E/I/J/L)', home_flag: '🇨🇴', away_flag: '🏆', match_date: '2026-07-04T02:30:00-05:00', venue: 'Arrowhead Stadium, Kansas City' },
-  { match_number: 88, stage: 'round_of_32', group_name: null, home_team: 'Australia', away_team: 'Egipto', home_flag: '🇦🇺', away_flag: '🇪🇬', match_date: '2026-07-03T19:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
+  { match_number: 87, stage: 'round_of_32', group_name: null, home_team: 'Australia', away_team: 'Egipto', home_flag: '🇦🇺', away_flag: '🇪🇬', match_date: '2026-07-03T19:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
+  { match_number: 88, stage: 'round_of_32', group_name: null, home_team: 'Colombia', away_team: 'Mejor 3°(D/E/I/J/L)', home_flag: '🇨🇴', away_flag: '🏆', match_date: '2026-07-04T02:30:00-05:00', venue: 'Arrowhead Stadium, Kansas City' },
 
   // OCTAVOS DE FINAL
   { match_number: 89, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-1', away_team: 'Ganador R32-2', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T14:00:00-05:00', venue: 'SoFi Stadium, Los Ángeles' },
