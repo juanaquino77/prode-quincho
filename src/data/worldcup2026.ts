@@ -132,14 +132,14 @@ export const KNOCKOUT_PLACEHOLDER_MATCHES: MatchSeed[] = [
   { match_number: 88, stage: 'round_of_32', group_name: null, home_team: 'Colombia', away_team: 'Ghana', home_flag: '🇨🇴', away_flag: '🇬🇭', match_date: '2026-07-03T22:30:00-03:00', venue: 'Arrowhead Stadium, Kansas City' },
 
   // OCTAVOS DE FINAL
-  { match_number: 89, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-1', away_team: 'Ganador R32-2', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T14:00:00-05:00', venue: 'SoFi Stadium, Los Ángeles' },
-  { match_number: 90, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-3', away_team: 'Ganador R32-4', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T18:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
-  { match_number: 91, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-5', away_team: 'Ganador R32-6', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-06T14:00:00-05:00', venue: 'MetLife Stadium, Nueva York' },
-  { match_number: 92, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-7', away_team: 'Ganador R32-8', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-06T18:00:00-05:00', venue: 'Rose Bowl, Los Ángeles' },
-  { match_number: 93, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-9', away_team: 'Ganador R32-10', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-07T14:00:00-05:00', venue: 'BMO Field, Toronto' },
-  { match_number: 94, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-11', away_team: 'Ganador R32-12', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-07T18:00:00-05:00', venue: 'BC Place, Vancouver' },
-  { match_number: 95, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-13', away_team: 'Ganador R32-14', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-08T14:00:00-05:00', venue: 'Levi\'s Stadium, San Francisco' },
-  { match_number: 96, stage: 'round_of_16', group_name: null, home_team: 'Ganador R32-15', away_team: 'Ganador R32-16', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-08T18:00:00-05:00', venue: 'Estadio Azteca, Ciudad de México' },
+  { match_number: 89, stage: 'round_of_16', group_name: null, home_team: 'Gan. #73', away_team: 'Gan. #75', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T14:00:00-03:00', venue: 'NRG Stadium, Houston' },
+  { match_number: 90, stage: 'round_of_16', group_name: null, home_team: 'Gan. #74', away_team: 'Gan. #77', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-05T18:00:00-03:00', venue: 'Lincoln Financial Field, Filadelfia' },
+  { match_number: 91, stage: 'round_of_16', group_name: null, home_team: 'Gan. #76', away_team: 'Gan. #78', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-06T17:00:00-03:00', venue: 'MetLife Stadium, Nueva York' },
+  { match_number: 92, stage: 'round_of_16', group_name: null, home_team: 'Gan. #79', away_team: 'Gan. #80', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-06T22:00:00-03:00', venue: 'Estadio Azteca, Ciudad de México' },
+  { match_number: 93, stage: 'round_of_16', group_name: null, home_team: 'Gan. #83', away_team: 'Gan. #84', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-07T17:00:00-03:00', venue: 'AT&T Stadium, Dallas' },
+  { match_number: 94, stage: 'round_of_16', group_name: null, home_team: 'Gan. #81', away_team: 'Gan. #82', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-07T21:00:00-03:00', venue: 'Lumen Field, Seattle' },
+  { match_number: 95, stage: 'round_of_16', group_name: null, home_team: 'Gan. #87', away_team: 'Gan. #86', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-08T13:00:00-03:00', venue: 'Mercedes-Benz Stadium, Atlanta' },
+  { match_number: 96, stage: 'round_of_16', group_name: null, home_team: 'Gan. #85', away_team: 'Gan. #88', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-08T17:00:00-03:00', venue: 'BC Place, Vancouver' },
 
   // CUARTOS DE FINAL
   { match_number: 97, stage: 'quarterfinal', group_name: null, home_team: 'Ganador R16-1', away_team: 'Ganador R16-2', home_flag: '🏆', away_flag: '🏆', match_date: '2026-07-10T18:00:00-05:00', venue: 'AT&T Stadium, Dallas' },
