@@ -14,8 +14,8 @@ const KNOCKOUT_STAGES: MatchStage[] = [
   'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final',
 ]
 
-// Visual order for R32: pairs that meet in the same R16 match must be adjacent
-const ROUND_OF_32_ORDER = [74, 77, 73, 75, 83, 84, 81, 82, 76, 78, 79, 80, 86, 87, 85, 88]
+// Visual order for R32: adjacent pairs feed the same R16 match (73+74→R16-89, 75+76→R16-90, …)
+const ROUND_OF_32_ORDER = [73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88]
 
 // Altura fija por fila del grid (px). Debe ser >= altura de una BracketMatch card.
 const ROW_H = 112
