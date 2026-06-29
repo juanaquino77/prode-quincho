@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle, Save } from 'lucide-react'
+import { Trophy, Users, CreditCard, CheckCircle2, AlertTriangle, Save, ChevronDown } from 'lucide-react'
 import { Layout } from '../components/layout/Layout'
 import { MatchCard } from '../components/matches/MatchCard'
 import { KnockoutRulesModal } from '../components/matches/KnockoutRulesModal'
@@ -30,6 +30,7 @@ export default function Predictions() {
   const [activeGroup, setActiveGroup] = useState<string>('A')
   const [viewMode, setViewMode] = useState<'groups' | 'calendar'>('calendar')
   const [knockoutRulesOpen, setKnockoutRulesOpen] = useState(false)
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
 
   const knockoutAckKey = user ? `knockout_rules_ack_${user.id}` : null
   const handleKnockoutAfterSave = useCallback(() => {
@@ -409,6 +410,8 @@ export default function Predictions() {
     const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
     const targetKey = liveDay?.dateKey ?? upcomingDay?.dateKey ?? todayKey
 
+    setExpandedDays(new Set([targetKey]))
+
     const timer = setTimeout(() => {
       const el = document.querySelector(`[data-day-key="${targetKey}"]`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -627,39 +630,74 @@ export default function Predictions() {
         <div className={needsPayment ? 'pb-24' : ''}>
           {calendarMatchesByDay.length === 0 ? (
             <div className="text-center py-12 text-white/40">No hay partidos</div>
-          ) : calendarMatchesByDay.map((day) => (
-            <div key={day.dateKey} data-day-key={day.dateKey} className="mb-8">
-              <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
-                <div className="flex-1 h-px bg-union-blue/15" />
-                <span className="text-xs text-white/30">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {day.matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    prediction={predMap.get(match.id)}
-                    tournamentId={selectedTournament!.id}
-                    userId={user!.id}
-                    onAfterSave={match.stage !== 'group' ? handleKnockoutAfterSave : undefined}
-                    phaseLocked={match.stage !== 'group' && (['Gan.', 'Mejor 3', 'Perdedor'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team) || match.home_team.includes(' o ') || match.away_team.includes(' o '))}
-                    phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
-                    lockAt={roundLockTimes.get(match.id)}
-                    highlighted={match.id === highlightMatchId}
-                    requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
-                    rules={selectedTournament!.rules}
-                    corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage)}
-                    isCorazonada={corazonadaByMatchId.has(match.id)}
-                    corazonadaLocked={groupCorazonadaLocked.has(match.group_name ?? match.stage)}
-                    ptsCorazonadaBonus={ptsCorazonadaBonus}
-                    onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name ?? match.stage })}
-                    onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+          ) : calendarMatchesByDay.map((day) => {
+            const isOpen = expandedDays.has(day.dateKey)
+            const hasLive = day.matches.some((m) => m.status === 'live')
+            const hasUpcoming = day.matches.some((m) => m.status === 'upcoming')
+            const donePct = Math.round(
+              (day.matches.filter((m) => predMap.has(m.id)).length / day.matches.length) * 100
+            )
+            return (
+              <div key={day.dateKey} data-day-key={day.dateKey} className="mb-3">
+                <button
+                  onClick={() => setExpandedDays((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(day.dateKey)) next.delete(day.dateKey)
+                    else next.add(day.dateKey)
+                    return next
+                  })}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-union-navy-light border border-union-blue/15 hover:border-union-blue/35 transition-all text-left"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-white/40">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
+                      {hasLive && <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded-full">EN VIVO</span>}
+                      {!hasLive && hasUpcoming && <span className="text-[10px] font-bold text-union-blue bg-union-blue/10 px-1.5 py-0.5 rounded-full">HOY</span>}
+                      {donePct > 0 && (
+                        <span className={cn(
+                          'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                          donePct === 100 ? 'text-green-400 bg-green-400/10' : 'text-yellow-400 bg-yellow-400/10'
+                        )}>
+                          {donePct === 100 ? '✓ Completo' : `${donePct}% completado`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={cn('text-white/40 shrink-0 transition-transform duration-200', isOpen && 'rotate-180')}
                   />
-                ))}
+                </button>
+                {isOpen && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {day.matches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        prediction={predMap.get(match.id)}
+                        tournamentId={selectedTournament!.id}
+                        userId={user!.id}
+                        onAfterSave={match.stage !== 'group' ? handleKnockoutAfterSave : undefined}
+                        phaseLocked={match.stage !== 'group' && (['Gan.', 'Mejor 3', 'Perdedor'].some(p => match.home_team.startsWith(p) || match.away_team.startsWith(p)) || /^[12][A-L]$/.test(match.home_team) || /^[12][A-L]$/.test(match.away_team) || match.home_team.includes(' o ') || match.away_team.includes(' o '))}
+                        phaseUnlockAt={isGroupStageDone ? phaseUnlockTimes.get(match.id) : undefined}
+                        lockAt={roundLockTimes.get(match.id)}
+                        highlighted={match.id === highlightMatchId}
+                        requiresExactScore={selectedTournament!.rules?.requires_exact_score ?? true}
+                        rules={selectedTournament!.rules}
+                        corazonadaEnabled={hasCorazonada && !['semifinal', 'final', 'third_place'].includes(match.stage)}
+                        isCorazonada={corazonadaByMatchId.has(match.id)}
+                        corazonadaLocked={groupCorazonadaLocked.has(match.group_name ?? match.stage)}
+                        ptsCorazonadaBonus={ptsCorazonadaBonus}
+                        onAddCorazonada={() => addCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id, group_name: match.group_name ?? match.stage })}
+                        onRemoveCorazonada={() => removeCorazonada.mutate({ user_id: user!.id, tournament_id: selectedTournament!.id, match_id: match.id })}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-12 text-white/40">No hay partidos en esta etapa</div>
