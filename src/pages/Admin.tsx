@@ -229,6 +229,8 @@ function ResultsTab() {
   const [filterStage, setFilterStage] = useState<string>('group')
   const [filterGroup, setFilterGroup] = useState<string>('A')
   const [viewMode, setViewMode] = useState<'stage' | 'calendar'>('stage')
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
+  const hasInitializedDays = useRef(false)
   const liveRef = useRef<HTMLDivElement>(null)
 
   const STAGES = ['group', 'round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final']
@@ -274,6 +276,17 @@ function ResultsTab() {
     }
     return days
   })() : []
+
+  useEffect(() => {
+    if (viewMode !== 'calendar' || matchesByDay.length === 0) return
+    if (hasInitializedDays.current) return
+    hasInitializedDays.current = true
+    const liveDay = matchesByDay.find((d) => d.matches.some((m) => m.status === 'live'))
+    const upcomingDay = matchesByDay.find((d) => d.matches.some((m) => m.status === 'upcoming'))
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+    setExpandedDays(new Set([liveDay?.dateKey ?? upcomingDay?.dateKey ?? todayKey]))
+  }, [matchesByDay, viewMode])
 
   // Etapas que tienen al menos 1 partido cargado
   const existingStages = new Set(allSorted.map((m) => m.stage))
@@ -392,18 +405,48 @@ function ResultsTab() {
       {viewMode === 'calendar' ? (
         matchesByDay.length === 0
           ? <Card className="text-center py-8 text-white/40 text-sm">No hay partidos cargados</Card>
-          : matchesByDay.map((day) => (
-            <div key={day.dateKey}>
-              <div className="flex items-center gap-3 mb-2 mt-4 first:mt-0">
-                <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
-                <div className="flex-1 h-px bg-union-blue/15" />
-                <span className="text-xs text-white/30">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
+          : matchesByDay.map((day) => {
+            const isOpen = expandedDays.has(day.dateKey)
+            const hasLive = day.matches.some((m) => m.status === 'live')
+            const hasUpcoming = day.matches.some((m) => m.status === 'upcoming')
+            const finishedCount = day.matches.filter((m) => m.status === 'finished').length
+            return (
+              <div key={day.dateKey} className="mb-3">
+                <button
+                  onClick={() => setExpandedDays((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(day.dateKey)) next.delete(day.dateKey)
+                    else next.add(day.dateKey)
+                    return next
+                  })}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-union-navy-light border border-union-blue/15 hover:border-union-blue/35 transition-all text-left"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white capitalize">{day.label}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-white/40">{day.matches.length} partido{day.matches.length !== 1 ? 's' : ''}</span>
+                      {hasLive && <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded-full">EN VIVO</span>}
+                      {!hasLive && hasUpcoming && <span className="text-[10px] font-bold text-union-blue bg-union-blue/10 px-1.5 py-0.5 rounded-full">HOY</span>}
+                      {finishedCount > 0 && (
+                        <span className={cn(
+                          'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                          finishedCount === day.matches.length ? 'text-green-400 bg-green-400/10' : 'text-yellow-400 bg-yellow-400/10'
+                        )}>
+                          {finishedCount === day.matches.length ? '✓ Todos finalizados' : `${finishedCount}/${day.matches.length} finalizados`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronDown size={16} className={cn('text-white/40 shrink-0 transition-transform duration-200', isOpen && 'rotate-180')} />
+                </button>
+                {isOpen && (
+                  <div className="mt-3 space-y-2">
+                    {day.matches.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                {day.matches.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
-              </div>
-            </div>
-          ))
+            )
+          })
       ) : (
         <>
               {relevant.map((m) => <MatchResultCard key={m.id} m={m} resolvedById={resolvedById} getRow={getRow} setField={setField} handleSave={handleSave} savingId={savingId} saved={saved} />)}
